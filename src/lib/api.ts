@@ -7,6 +7,7 @@ export type ApiOptions = {
   headers?: Record<string, string>;
   token?: string | null;
   signal?: AbortSignal;
+  skipAuth?: boolean; // login kabi public endpoint uchun
 };
 
 export type ApiError = {
@@ -15,8 +16,40 @@ export type ApiError = {
   details?: any;
 };
 
+// ─── Token helpers ───────────────────────────────────────────────
+
+export function getAccessToken(): string | null {
+  try {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("access_token");
+  } catch {
+    return null;
+  }
+}
+
+export function getRefreshToken(): string | null {
+  try {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("refresh_token");
+  } catch {
+    return null;
+  }
+}
+
+export function setTokens(access: string, refresh: string) {
+  localStorage.setItem("access_token", access);
+  localStorage.setItem("refresh_token", refresh);
+}
+
+export function clearTokens() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("auth_user");
+}
+
+// ─── Internals ───────────────────────────────────────────────────
+
 function getBaseUrl(): string {
-  // Vite uses import.meta.env for environment variables
   const base = import.meta.env.VITE_API_BASE_URL || "";
   return String(base).replace(/\/$/, "");
 }
@@ -47,15 +80,6 @@ function isFormData(v: any): v is FormData {
   return typeof FormData !== "undefined" && v instanceof FormData;
 }
 
-function getDefaultToken(): string | null {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem("access_token");
-  } catch {
-    return null;
-  }
-}
-
 async function parseResponse(res: Response) {
   const contentType = res.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -69,14 +93,67 @@ async function parseResponse(res: Response) {
   }
 }
 
-/**
- * Universal API helper
- */
+// ─── Token refresh ───────────────────────────────────────────────
+
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  // Agar allaqachon refresh jarayoni bo'lsa, uni kutamiz (parallel refresh'ni oldini olamiz)
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refresh = getRefreshToken();
+    if (!refresh) {
+      clearTokens();
+      window.location.href = "/login";
+      throw { status: 401, message: "No refresh token" } satisfies ApiError;
+    }
+
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+
+    if (!res.ok) {
+      clearTokens();
+      window.location.href = "/login";
+      throw { status: 401, message: "Refresh token expired" } satisfies ApiError;
+    }
+
+    const data = await res.json();
+    const newAccess = data.access_token || data.access;
+    const newRefresh = data.refresh_token || data.refresh || refresh;
+    setTokens(newAccess, newRefresh);
+    return newAccess;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+// ─── Universal API helper ────────────────────────────────────────
+
 export async function api<TResponse = any>(
   path: string,
   options: ApiOptions = {}
 ): Promise<TResponse> {
-  const { method = "GET", data, params, headers = {}, token, signal } = options;
+  const {
+    method = "GET",
+    data,
+    params,
+    headers = {},
+    token,
+    signal,
+    skipAuth = false,
+  } = options;
 
   const baseUrl = getBaseUrl();
   if (!baseUrl) {
@@ -95,9 +172,11 @@ export async function api<TResponse = any>(
     ...headers,
   };
 
-  const finalToken = token ?? getDefaultToken();
-  if (finalToken) {
-    finalHeaders.Authorization = `Bearer ${finalToken}`;
+  if (!skipAuth) {
+    const finalToken = token ?? getAccessToken();
+    if (finalToken) {
+      finalHeaders.Authorization = `Bearer ${finalToken}`;
+    }
   }
 
   let body: BodyInit | undefined = undefined;
@@ -113,13 +192,30 @@ export async function api<TResponse = any>(
     }
   }
 
-  const res = await fetch(url, {
+  let res = await fetch(url, {
     method,
     headers: finalHeaders,
     body,
     signal,
-    credentials: "include",
   });
+
+  // 401 bo'lsa — token refresh qilib qayta so'rov yuboramiz
+  if (res.status === 401 && !skipAuth) {
+    try {
+      const newToken = await refreshAccessToken();
+      finalHeaders.Authorization = `Bearer ${newToken}`;
+
+      res = await fetch(url, {
+        method,
+        headers: finalHeaders,
+        body,
+        signal,
+      });
+    } catch {
+      // refresh ham muvaffaqiyatsiz — login sahifasiga yo'naltiriladi
+      throw { status: 401, message: "Session expired" } satisfies ApiError;
+    }
+  }
 
   const payload = await parseResponse(res);
 
@@ -137,6 +233,8 @@ export async function api<TResponse = any>(
 
   return payload as TResponse;
 }
+
+// ─── Shorthand methods ──────────────────────────────────────────
 
 export const apiGet = <T = any>(
   path: string,
@@ -165,3 +263,33 @@ export const apiDelete = <T = any>(
   path: string,
   opts: Omit<ApiOptions, "method"> = {}
 ) => api<T>(path, { ...opts, method: "DELETE" });
+
+// ─── CRUD helpers ────────────────────────────────────────────────
+// Har qanday resource uchun CRUD funksiyalar
+// Masalan: crud.getAll("/organizations") yoki crud.create("/kiosks", { name: "Test" })
+
+export const crud = {
+  /** GET /resource?params */
+  getAll: <T = any>(resource: string, params?: Record<string, any>) =>
+    apiGet<T>(resource, { params }),
+
+  /** GET /resource/:id */
+  getOne: <T = any>(resource: string, id: string | number) =>
+    apiGet<T>(`${resource}/${id}`),
+
+  /** POST /resource */
+  create: <T = any>(resource: string, data: any) =>
+    apiPost<T>(resource, data),
+
+  /** PUT /resource/:id */
+  update: <T = any>(resource: string, id: string | number, data: any) =>
+    apiPut<T>(`${resource}/${id}`, data),
+
+  /** PATCH /resource/:id */
+  patch: <T = any>(resource: string, id: string | number, data: any) =>
+    apiPatch<T>(`${resource}/${id}`, data),
+
+  /** DELETE /resource/:id */
+  remove: <T = any>(resource: string, id: string | number) =>
+    apiDelete<T>(`${resource}/${id}`),
+};

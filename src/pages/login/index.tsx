@@ -28,7 +28,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [quickLoginLoading, setQuickLoginLoading] = useState<string | null>(null);
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -37,36 +37,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
       await login(phone, password);
       showToast.loginSuccess();
-      
-      // Navigate to dashboard after login
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
       const msg = err?.message || t("loginError");
       showToast.loginError(msg);
       setErrorMsg(msg);
+    } finally {
       setLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (loginPhone: string, role: string) => {
-    setQuickLoginLoading(role);
-    setErrorMsg(null);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await login(loginPhone, "demo123");
-      showToast.loginSuccess();
-      
-      // Navigate to dashboard after login
-      navigate('/dashboard', { replace: true });
-    } catch (err: any) {
-      const msg = err?.message || t("loginError");
-      showToast.loginError(msg);
-      setErrorMsg(msg);
-      setQuickLoginLoading(null);
     }
   };
 
@@ -77,7 +56,7 @@ export default function LoginPage() {
     }
   };
 
-  const isAnyLoading = loading || quickLoginLoading !== null;
+  const isAnyLoading = loading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-card/50 flex items-center justify-center px-4 py-8">
