@@ -38,7 +38,6 @@ export default function DeleteConfirmModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-5 sm:p-6">
-                    {/* Close button */}
                     <div className="flex justify-end -mt-1 -mr-1">
                         <button
                             onClick={onClose}
@@ -49,19 +48,16 @@ export default function DeleteConfirmModal({
                         </button>
                     </div>
 
-                    {/* Icon */}
                     <div className="flex justify-center mb-4">
                         <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
                             <AlertTriangle className="text-red-500" size={28} />
                         </div>
                     </div>
 
-                    {/* Title */}
                     <h3 className="text-lg font-semibold text-foreground text-center mb-2">
                         {title || t("deleteConfirmTitle")}
                     </h3>
 
-                    {/* Message */}
                     <p className="text-sm text-muted-foreground text-center mb-1">
                         {message || t("deleteConfirmMessage")}
                     </p>
@@ -72,7 +68,6 @@ export default function DeleteConfirmModal({
                     )}
                     {!itemName && <div className="mb-5" />}
 
-                    {/* Buttons */}
                     <div className="flex gap-3">
                         <Button
                             onClick={onClose}

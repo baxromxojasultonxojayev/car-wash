@@ -6,18 +6,10 @@ import { Plus, Edit2, Trash2, X } from "lucide-react";
 import { crud } from "@/lib/api";
 import DataTable, { Column } from "@/components/Table/DataTable";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
-import UserForm, { UserFormData } from "./components/user-form";
+import UserForm from "./components/user-form";
 import { toast } from "sonner";
+import type { ApiUser, UserFormData } from "./type";
 
-// API dan keladigan User modeli
-interface ApiUser {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  is_super: boolean;
-  created_at?: string;
-}
 
 const API_PATH = "/platform/users";
 
@@ -32,8 +24,6 @@ export default function UsersPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ApiUser | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  // ─── Fetch users ─────────────────────────────────────────────
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -52,8 +42,6 @@ export default function UsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  // ─── Create / Update ────────────────────────────────────────
-
   const handleSubmit = async (formData: UserFormData) => {
     setFormLoading(true);
     try {
@@ -65,15 +53,13 @@ export default function UsersPage() {
         toast.success(t("createSuccess"));
       }
       closeModal();
-      fetchUsers();
+      await fetchUsers();
     } catch (err: any) {
       toast.error(err?.message || t("saveError"));
     } finally {
       setFormLoading(false);
     }
   };
-
-  // ─── Delete ──────────────────────────────────────────────────
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -90,8 +76,6 @@ export default function UsersPage() {
     }
   };
 
-  // ─── Modal ───────────────────────────────────────────────────
-
   const openCreate = () => {
     setEditingUser(null);
     setIsFormOpen(true);
@@ -106,8 +90,6 @@ export default function UsersPage() {
     setIsFormOpen(false);
     setEditingUser(null);
   };
-
-  // ─── Table columns ──────────────────────────────────────────
 
   const getRoleColor = (isSuper: boolean) =>
     isSuper
@@ -167,6 +149,26 @@ export default function UsersPage() {
       ),
     },
     {
+      key: "status",
+      header: t("status"),
+      hideOnTablet: true,
+      searchable: false,
+      render: (val) => (
+        <span
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${val === 'active'
+            ? "bg-emerald-500/10 text-emerald-500"
+            : "bg-orange-500/10 text-orange-500"
+            }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${val === 'active' ? "bg-emerald-500 animate-pulse" : "bg-orange-500"
+              }`}
+          />
+          {val === 'active' ? t("active") : t("Deleted")}
+        </span>
+      ),
+    },
+    {
       key: "actions",
       header: t("actions"),
       align: "right",
@@ -192,8 +194,6 @@ export default function UsersPage() {
     },
   ];
 
-  // ─── Mobile card ─────────────────────────────────────────────
-
   const renderMobileCard = (user: ApiUser) => (
     <Card className="bg-card border border-border/20 p-4">
       <div className="flex items-start justify-between mb-3">
@@ -201,11 +201,22 @@ export default function UsersPage() {
           <p className="font-medium text-foreground truncate">{user.name}</p>
           <p className="text-sm text-muted-foreground truncate">{user.email}</p>
         </div>
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.is_super)}`}
-        >
-          {user.is_super ? "Super Admin" : "Admin"}
-        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${user.status
+              ? "bg-emerald-500/10 text-emerald-500"
+              : "bg-orange-500/10 text-orange-500"
+              }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${user.status ? "bg-emerald-500" : "bg-orange-500"}`} />
+            {user.status ? t("active") : t("inactive")}
+          </span>
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.is_super)}`}
+          >
+            {user.is_super ? "Super Admin" : "Admin"}
+          </span>
+        </div>
       </div>
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">{user.phone || "-"}</span>
@@ -227,11 +238,8 @@ export default function UsersPage() {
     </Card>
   );
 
-  // ─── Render ──────────────────────────────────────────────────
-
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
@@ -250,7 +258,6 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      {/* Data Table */}
       <DataTable
         data={users}
         columns={columns}
@@ -263,7 +270,6 @@ export default function UsersPage() {
         emptyMessage={t("userNotFound")}
       />
 
-      {/* User Form Modal */}
       {isFormOpen && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4"
@@ -272,10 +278,10 @@ export default function UsersPage() {
           }}
         >
           <Card
-            className="w-full max-w-md bg-card border border-border/20 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-2xl bg-card border border-border/20 max-h-[90vh] overflow-y-auto shadow-2xl shadow-black/20"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 sm:p-6">
+            <div className="p-5 sm:p-8">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-foreground">
                   {editingUser ? t("editUser") : t("newUser")}
@@ -288,6 +294,7 @@ export default function UsersPage() {
                 </button>
               </div>
               <UserForm
+                key={editingUser?.id || "new"}
                 user={editingUser}
                 onSubmit={handleSubmit}
                 onCancel={closeModal}
@@ -298,7 +305,6 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

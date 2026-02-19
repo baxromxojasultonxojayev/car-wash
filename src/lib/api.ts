@@ -220,12 +220,25 @@ export async function api<TResponse = any>(
   const payload = await parseResponse(res);
 
   if (!res.ok) {
+    let message = res.statusText || "Request error";
+
+    if (payload) {
+      if (typeof payload.message === "string") {
+        message = payload.message;
+      } else if (typeof payload.error === "string") {
+        message = payload.error;
+      } else if (typeof payload.detail === "string") {
+        message = payload.detail;
+      } else if (Array.isArray(payload.detail)) {
+        message = payload.detail
+          .map((d: any) => d?.msg || d?.message || JSON.stringify(d))
+          .join("; ");
+      }
+    }
+
     const err: ApiError = {
       status: res.status,
-      message:
-        (payload && (payload.message || payload.detail || payload.error)) ||
-        res.statusText ||
-        "Request error",
+      message,
       details: payload,
     };
     throw err;

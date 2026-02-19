@@ -9,11 +9,9 @@ import DashboardPage from './pages/dashboard'
 
 // Super Admin Pages
 import OrganizationsPage from './pages/organizations'
-// import OrganizationDetailPage from './pages/organizations/detail'
 import AccountsPage from './pages/accounts'
 import QRCodesPage from './pages/qr-codes'
 import UsersPage from './pages/users'
-import UserDetailPage from './pages/users/detail'
 
 // Client Admin Pages
 import KiosksPage from './pages/kiosks'
@@ -27,22 +25,22 @@ import WorkersPage from './pages/workers'
 // Wrapper for login page - redirects if already authenticated
 function LoginRoute() {
   const { isAuthenticated } = useAuth();
-  
+
   // If already authenticated, redirect to dashboard
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <LoginPage />;
 }
 
 function RootRedirect() {
   const { isAuthenticated } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   // All users go to dashboard after login
   return <Navigate to="/dashboard" replace />;
 }
@@ -52,16 +50,14 @@ export function AppRouter() {
     <Routes>
       {/* Public routes - with auth check wrapper */}
       <Route path="/login" element={<LoginRoute />} />
-      
+
       {/* Super Admin routes */}
       <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/organizations" element={<OrganizationsPage />} />
-          {/* <Route path="/organizations/:id" element={<OrganizationDetailPage />} /> */}
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/qr-codes" element={<QRCodesPage />} />
           <Route path="/users" element={<UsersPage />} />
-          <Route path="/users/:id" element={<UserDetailPage />} />
         </Route>
       </Route>
 
@@ -84,10 +80,10 @@ export function AppRouter() {
           <Route path="/dashboard" element={<DashboardPage />} />
         </Route>
       </Route>
-      
+
       {/* Root redirect */}
       <Route path="/" element={<RootRedirect />} />
-      
+
       {/* Catch all */}
       <Route path="*" element={<RootRedirect />} />
     </Routes>
