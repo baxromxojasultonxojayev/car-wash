@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Globe, LogOut, Sun, Moon, Menu } from "lucide-react";
+import { Globe, LogOut, Sun, Moon, Menu, Check } from "lucide-react";
 
 type HeaderProps = {
   email?: string;
@@ -47,7 +47,13 @@ export default function Header({ email, onLogout, onMenuClick, isSidebarOpen }: 
   };
 
   return (
-    <div className="bg-card border-b border-border/20 px-4 sm:px-6 py-4 flex items-center justify-between">
+    <div
+      className="bg-card border-b border-border/20 px-4 sm:px-6 py-4 flex items-center justify-between transition-colors duration-300"
+      style={{
+        backgroundColor: 'var(--header-bg)',
+        color: 'var(--header-fg)'
+      }}
+    >
       {/* Left side - hamburger + title */}
       <div className="flex items-center gap-3">
         {/* Mobile hamburger menu */}
@@ -60,13 +66,13 @@ export default function Header({ email, onLogout, onMenuClick, isSidebarOpen }: 
             <Menu size={22} className="text-foreground" />
           </button>
         )}
-        <h2 className="text-lg sm:text-xl font-bold text-foreground">{title}</h2>
+        <h2 className="text-lg sm:text-xl font-bold transition-colors duration-300" style={{ color: 'inherit' }}>{title}</h2>
       </div>
 
       {/* Right side - controls */}
       <div className="flex items-center gap-1 sm:gap-2">
         {/* Theme toggle */}
-        <button
+        {/* <button
           onClick={toggleTheme}
           className="p-2 hover:bg-accent rounded-lg transition-colors"
           title={t("changeTheme")}
@@ -76,7 +82,7 @@ export default function Header({ email, onLogout, onMenuClick, isSidebarOpen }: 
           ) : (
             <Moon size={20} className="text-muted-foreground hover:text-foreground transition-colors" />
           )}
-        </button>
+        </button> */}
 
         {/* Language switcher */}
         <DropdownMenu>
@@ -91,15 +97,27 @@ export default function Header({ email, onLogout, onMenuClick, isSidebarOpen }: 
               />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => changeLanguage("uz")}>
-              O'zbek (UZ)
+          <DropdownMenuContent align="end" className="min-w-[150px]">
+            <DropdownMenuItem
+              onClick={() => changeLanguage("uz")}
+              className="flex items-center justify-between gap-2 cursor-pointer"
+            >
+              <span>O'zbek (UZ)</span>
+              {i18n.language === "uz" && <Check size={16} className="text-primary" />}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => changeLanguage("ru")}>
-              Русский (RU)
+            <DropdownMenuItem
+              onClick={() => changeLanguage("ru")}
+              className="flex items-center justify-between gap-2 cursor-pointer"
+            >
+              <span>Русский (RU)</span>
+              {i18n.language === "ru" && <Check size={16} className="text-primary" />}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => changeLanguage("en")}>
-              English (EN)
+            <DropdownMenuItem
+              onClick={() => changeLanguage("en")}
+              className="flex items-center justify-between gap-2 cursor-pointer"
+            >
+              <span>English (EN)</span>
+              {i18n.language === "en" && <Check size={16} className="text-primary" />}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

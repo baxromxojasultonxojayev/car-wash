@@ -35,11 +35,11 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMsg(null);
     setLoading(true);
-
     try {
       await login(phone, password);
       showToast.loginSuccess();
-      navigate('/dashboard', { replace: true });
+      navigate("/dashboard");
+
     } catch (err: any) {
       const msg = err?.message || t("loginError");
       showToast.loginError(msg);
@@ -169,8 +169,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-
           </div>
         </Card>
       </div>

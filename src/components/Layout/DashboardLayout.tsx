@@ -5,6 +5,7 @@ import Sidebar from "./sidebar";
 import { X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import showToast from "@/lib/toast";
+import SettingsPanel from "./SettingsPanel";
 
 export function DashboardLayout() {
   const navigate = useNavigate();
@@ -82,6 +83,7 @@ export function DashboardLayout() {
           </div>
         </div>
       </div>
+      <SettingsPanel />
     </div>
   );
 }

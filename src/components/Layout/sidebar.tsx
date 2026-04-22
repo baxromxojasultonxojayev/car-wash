@@ -1,19 +1,14 @@
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../lib/auth";
 import {
-  LayoutDashboard,
-  Building2,
-  Users,
-  QrCode,
-  Zap,
-  DollarSign,
-  Megaphone,
-  BarChart3,
-  Tag,
-  UserCheck,
   LogOut,
+  ChevronDown,
+  ChevronRight,
+  Zap
 } from "lucide-react";
+import { getMenuStructure, MenuItem } from "../../constants/menu-items";
 
 type SidebarProps = {
   onLogout: () => void;
@@ -25,37 +20,61 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
   const location = useLocation();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    orgs: true,
+  });
+
+  const toggleMenu = (id: string) => {
+    setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const isSuperAdmin = user?.role === 'super_admin';
-
-  // Super Admin menu
-  const superAdminMenu = [
-    { id: "dashboard", label: t("dashboard"), icon: LayoutDashboard, path: "/dashboard" },
-    { id: "organizations", label: t("organizations"), icon: Building2, path: "/organizations" },
-    { id: "accounts", label: t("accounts"), icon: Users, path: "/accounts" },
-    { id: "qrCodes", label: t("qrCodes"), icon: QrCode, path: "/qr-codes" },
-    { id: "allUsers", label: t("allUsers"), icon: UserCheck, path: "/users" },
-  ];
-
-  // Client Admin menu
-  const clientAdminMenu = [
-    { id: "dashboard", label: t("dashboard"), icon: LayoutDashboard, path: "/dashboard" },
-    { id: "kiosks", label: t("kiosks"), icon: Zap, path: "/kiosks" },
-    { id: "priceGoods", label: t("priceGoods"), icon: DollarSign, path: "/price-goods" },
-    { id: "advertisements", label: t("advertisements"), icon: Megaphone, path: "/advertisements" },
-    { id: "statistics", label: t("statistics"), icon: BarChart3, path: "/statistics" },
-    { id: "promotions", label: t("promotions"), icon: Tag, path: "/promotions" },
-    { id: "workers", label: t("workers"), icon: UserCheck, path: "/workers" },
-  ];
-
-  const menuItems = isSuperAdmin ? superAdminMenu : clientAdminMenu;
+  const menuStructure = getMenuStructure(t);
 
   const navigateTo = (path: string) => {
-    console.log('path',path);
-    
-    // if (path === location.pathname) return;
-    // onNavigateStart?.();
+    if (onNavigateStart) onNavigateStart();
     navigate(path);
+  };
+
+  const renderMenuItem = (item: MenuItem, isSubItem = false) => {
+    const Icon = item.icon;
+    const hasSubItems = item.subItems && item.subItems.length > 0;
+    const isOpen = openMenus[item.id];
+    const isActive = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
+    const isChildActive = item.subItems?.some(sub => location.pathname === sub.path || location.pathname.startsWith(sub.path + '/'));
+
+    return (
+      <div key={item.id} className="w-full">
+        <button
+          onClick={() => hasSubItems ? toggleMenu(item.id) : item.path && navigateTo(item.path)}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${isSubItem ? 'pl-11' : ''} ${
+            isActive || (hasSubItems && isChildActive)
+              ? "text-primary-foreground shadow-sm"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+          }`}
+          style={{
+            background: (isActive || (hasSubItems && isChildActive && !isOpen))
+              ? `linear-gradient(135deg, var(--theme-color) 0%, oklch(from var(--theme-color) calc(l - 0.1) c h) 100%)`
+              : undefined,
+          }}
+        >
+          <Icon 
+            size={isSubItem ? 18 : 20} 
+            className={`flex-shrink-0 transition-transform duration-300 ${(isActive || isChildActive) ? 'scale-110' : ''}`} 
+          />
+          <span className={`flex-1 text-left ${isSubItem ? 'text-xs' : 'text-sm'}`}>{item.label}</span>
+          {hasSubItems && (
+            isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+          )}
+        </button>
+        
+        {hasSubItems && isOpen && (
+          <div className="mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+            {item.subItems!.map(sub => renderMenuItem(sub, true))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -78,27 +97,8 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
       </div>
 
       {/* Menu items */}
-      <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path || 
-            location.pathname.startsWith(item.path + '/');
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => navigateTo(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                isActive
-                  ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
-              }`}
-            >
-              <Icon size={20} className="flex-shrink-0" />
-              <span className="flex-1 text-left text-sm">{item.label}</span>
-            </button>
-          );
-        })}
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto custom-scrollbar">
+        {menuStructure.map(item => renderMenuItem(item))}
       </nav>
 
       {/* User info & Logout */}
