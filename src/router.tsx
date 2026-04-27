@@ -6,6 +6,7 @@ import { useAuth } from './lib/auth'
 // Pages
 import LoginPage from './pages/login'
 import DashboardPage from './pages/dashboard'
+import PlaceholderPage from './pages/placeholder'
 
 // Super Admin Pages
 import OrganizationsPage from './pages/organizations'
@@ -55,15 +56,23 @@ export function AppRouter() {
       <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/organizations" element={<OrganizationsPage />} />
-          <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/qr-codes" element={<QRCodesPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/devices" element={<PlaceholderPage title="Qurilmalar" />} />
         </Route>
       </Route>
 
       {/* Client Admin routes */}
       <Route element={<ProtectedRoute allowedRoles={['client_admin']} />}>
         <Route element={<DashboardLayout />}>
+          <Route path="/my-company" element={<PlaceholderPage title="Mening kompaniyam" />} />
+          <Route path="/branches" element={<PlaceholderPage title="Mening filiallarim" />} />
+          <Route path="/specialists" element={<PlaceholderPage title="Mening mutaxassislarim" />} />
+          <Route path="/specialist-requests" element={<PlaceholderPage title="Mutaxassislarga so'rovlar" />} />
+          <Route path="/orders" element={<PlaceholderPage title="Buyurtmalar" />} />
+          <Route path="/working-hours" element={<PlaceholderPage title="Ish vaqti" />} />
+          <Route path="/plans-quotas" element={<PlaceholderPage title="Rejalar va kvotalar" />} />
+          
           <Route path="/kiosks" element={<KiosksPage />} />
           <Route path="/kiosks/:id" element={<KioskDetailPage />} />
           <Route path="/price-goods" element={<PriceGoodsPage />} />
@@ -78,6 +87,13 @@ export function AppRouter() {
       <Route element={<ProtectedRoute allowedRoles={['super_admin', 'client_admin']} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/firmware" element={<PlaceholderPage title="OTA Firmware" />} />
+          <Route path="/cards" element={<PlaceholderPage title="RFID Kartalar" />} />
+          <Route path="/sessions" element={<PlaceholderPage title="Yuvish seanslari" />} />
+          <Route path="/reports" element={<PlaceholderPage title="Hisobotlar" />} />
+          <Route path="/reviews" element={<PlaceholderPage title="Sharhlar" />} />
+          <Route path="/services" element={<PlaceholderPage title="Xizmatlar" />} />
         </Route>
       </Route>
 
