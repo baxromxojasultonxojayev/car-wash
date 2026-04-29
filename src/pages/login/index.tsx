@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Globe, Eye, EyeOff, Loader2, Phone } from "lucide-react";
+import { Globe, Eye, EyeOff, Loader2, Phone, UserSquare2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -23,7 +23,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [phone, setPhone] = useState("");
+  const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -36,7 +36,7 @@ export default function LoginPage() {
     setErrorMsg(null);
     setLoading(true);
     try {
-      await login(phone, password);
+      await login(loginValue, password);
       showToast.loginSuccess();
       navigate("/dashboard");
 
@@ -103,20 +103,20 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
                 <label
-                  htmlFor="phone"
+                  htmlFor="login"
                   className="block text-sm font-semibold text-foreground"
                 >
-                  {t("phone")}
+                  {t("username")}
                 </label>
 
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <UserSquare2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+998 90 123 45 67"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    id="login"
+                    type="text"
+                    placeholder="SuperAdmin"
+                    value={loginValue}
+                    onChange={(e) => setLoginValue(e.target.value)}
                     className="bg-input border-border/40 text-foreground placeholder:text-muted-foreground/50 h-11 pl-10"
                     required
                     disabled={isAnyLoading}

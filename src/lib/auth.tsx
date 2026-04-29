@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { apiPost, setTokens, clearTokens, getAccessToken } from './api';
+import { apiPost, setTokens, clearTokens, getAccessToken, getRefreshToken } from './api';
 
 export type UserRole = 'super_admin' | 'client_admin';
 
@@ -80,29 +80,19 @@ function getInitialUser(): User | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => getInitialUser());
 
-  const login = useCallback(async (phone: string, password: string): Promise<User> => {
-    const normalizedPhone = normalizePhone(phone);
-
-    // Fallback for development if API is not working or commented out
-    const mockUser: User = {
-      id: 'mock-1',
-      phone: normalizedPhone,
-      name: normalizedPhone === '998947777777' ? 'Super Admin' : 'Admin',
-      role: normalizedPhone === '998947777777' ? 'super_admin' : 'client_admin',
-    };
-
+  const login = useCallback(async (loginValue: string, password: string): Promise<User> => {
     try {
       // Validatsiya
-      if (!normalizedPhone || normalizedPhone.length < 9) {
-        throw new Error("Telefon raqamni to'g'ri kiriting");
+      if (!loginValue || loginValue.length < 1) {
+        throw new Error("Loginni kiriting");
       }
       if (!password || password.length < 1) {
         throw new Error('Parolni kiriting');
       }
 
       // Haqiqiy API ga so'rov
-      const response = await apiPost<LoginResponse>('/auth/login', {
-        phone: normalizedPhone,
+      const response = await apiPost<LoginResponse>('/auth/admin/login', {
+        login: loginValue,
         password,
       }, { skipAuth: true });
 
@@ -117,16 +107,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTokens(accessToken, refreshToken);
 
       // User ma'lumotlarini aniqlash
-      const isSuperAdmin = normalizedPhone === '998947777777';
+      // Foydalanuvchi aytganidek: SuperAdmin/root1234 -> super_admin
+      const isSuperAdmin = loginValue === 'SuperAdmin' && password === 'root1234';
       let newUser: User;
 
       if (response.user && response.user.id) {
         const u = response.user;
         newUser = {
           id: String(u.id),
-          phone: u.phone || normalizedPhone,
+          phone: u.phone || loginValue,
           name: u.name || (isSuperAdmin ? 'Super Admin' : 'Admin'),
-          role: (u.role as UserRole) || (isSuperAdmin ? 'super_admin' : 'client_admin'),
+          role: isSuperAdmin ? 'super_admin' : (u.role as UserRole) || 'client_admin',
           organizationId: u.organization_id ? String(u.organization_id) : undefined,
           organizationName: u.organization_name || undefined,
         };
@@ -134,9 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const payload = parseJwt(accessToken);
         newUser = {
           id: payload?.sub || payload?.user_id || payload?.id || '1',
-          phone: payload?.phone || normalizedPhone,
+          phone: payload?.phone || payload?.login || loginValue,
           name: payload?.name || payload?.username || (isSuperAdmin ? 'Super Admin' : 'Admin'),
-          role: payload?.role || payload?.user_role || (isSuperAdmin ? 'super_admin' : 'client_admin'),
+          role: isSuperAdmin ? 'super_admin' : (payload?.role || payload?.user_role || 'client_admin') as UserRole,
           organizationId: payload?.organization_id ? String(payload.organization_id) : undefined,
           organizationName: payload?.organization_name || undefined,
         };
@@ -145,18 +136,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('auth_user', JSON.stringify(newUser));
       setUser(newUser);
       return newUser;
-    } catch (error) {
-      console.warn("API login failed, using mock user for development:", error);
-      // If API fails, use mock user for now as requested by user
-      localStorage.setItem('auth_user', JSON.stringify(mockUser));
-      setUser(mockUser);
-      return mockUser;
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      throw error;
     }
   }, []);
 
-  const logout = useCallback(() => {
-    clearTokens();
-    setUser(null);
+  const logout = useCallback(async () => {
+    try {
+      const refreshToken = getRefreshToken();
+      // API logout endpoint'ini chaqirish, payload'da refresh_token yuboramiz
+      if (refreshToken) {
+        await apiPost('/auth/logout', { refresh_token: refreshToken }).catch(() => {});
+      } else {
+        await apiPost('/auth/logout').catch(() => {});
+      }
+    } finally {
+      clearTokens();
+      setUser(null);
+    }
   }, []);
 
   return (

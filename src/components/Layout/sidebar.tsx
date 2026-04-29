@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../lib/auth";
@@ -21,7 +21,37 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
   const location = useLocation();
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  // Helper to find parent IDs of the active path
+  const getActiveParentIds = useCallback((items: MenuItem[], path: string): string[] => {
+    const parents: string[] = [];
+    
+    const findInItems = (items: MenuItem[], currentPath: string): boolean => {
+      for (const item of items) {
+        // Check if this item is the active one
+        if (item.path === currentPath || (item.path && item.path !== '/' && currentPath.startsWith(item.path + '/'))) {
+          return true;
+        }
+        
+        // Check sub items
+        if (item.subItems && findInItems(item.subItems, currentPath)) {
+          parents.push(item.id);
+          return true;
+        }
+      }
+      return false;
+    };
+    
+    findInItems(items, path);
+    return parents;
+  }, []);
+
+  // Initialize open menus based on current path
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
+    // We can't access menuStructure here because it's defined after, 
+    // but we can call getMenuStructure(t) directly or wait for useEffect.
+    // For now, let's start empty and let useEffect handle it immediately.
+    return {};
+  });
 
   const userRole = user?.role || 'client_admin';
   const isSuperAdmin = userRole === 'super_admin';
@@ -42,6 +72,24 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
     };
     return filterItems(getMenuStructure(t));
   }, [t, userRole]);
+
+  // Sync open menus with current path
+  React.useEffect(() => {
+    const activeParents = getActiveParentIds(menuStructure, location.pathname);
+    if (activeParents.length > 0) {
+      setOpenMenus(prev => {
+        const next = { ...prev };
+        let changed = false;
+        activeParents.forEach(id => {
+          if (!next[id]) {
+            next[id] = true;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [location.pathname, menuStructure, getActiveParentIds]);
 
   const toggleMenu = (id: string) => {
     setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
