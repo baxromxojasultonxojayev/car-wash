@@ -2,12 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Dropdown, MenuProps, Space, Button } from "antd";
 import { Globe, LogOut, Sun, Moon, Menu, Check } from "lucide-react";
 
 type HeaderProps = {
@@ -42,9 +37,38 @@ export default function Header({ email, onLogout, onMenuClick, isSidebarOpen }: 
     }
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+  const langItems: MenuProps['items'] = [
+    {
+      key: 'uz',
+      label: (
+        <div className="flex items-center justify-between gap-4 min-w-[120px]">
+          <span>O'zbek (UZ)</span>
+          {i18n.language === "uz" && <Check size={16} className="text-primary" />}
+        </div>
+      ),
+      onClick: () => changeLanguage("uz"),
+    },
+    {
+      key: 'ru',
+      label: (
+        <div className="flex items-center justify-between gap-4 min-w-[120px]">
+          <span>Русский (RU)</span>
+          {i18n.language === "ru" && <Check size={16} className="text-primary" />}
+        </div>
+      ),
+      onClick: () => changeLanguage("ru"),
+    },
+    {
+      key: 'en',
+      label: (
+        <div className="flex items-center justify-between gap-4 min-w-[120px]">
+          <span>English (EN)</span>
+          {i18n.language === "en" && <Check size={16} className="text-primary" />}
+        </div>
+      ),
+      onClick: () => changeLanguage("en"),
+    },
+  ];
 
   return (
     <div
@@ -71,59 +95,21 @@ export default function Header({ email, onLogout, onMenuClick, isSidebarOpen }: 
 
       {/* Right side - controls */}
       <div className="flex items-center gap-1 sm:gap-2">
-        {/* Theme toggle */}
-        {/* <button
-          onClick={toggleTheme}
-          className="p-2 hover:bg-accent rounded-lg transition-colors"
-          title={t("changeTheme")}
-        >
-          {theme === "dark" ? (
-            <Sun size={20} className="text-muted-foreground hover:text-foreground transition-colors" />
-          ) : (
-            <Moon size={20} className="text-muted-foreground hover:text-foreground transition-colors" />
-          )}
-        </button> */}
-
         {/* Language switcher */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="p-2 hover:bg-accent rounded-lg transition-colors"
-              title={t("changeLanguage")}
-            >
-              <Globe
-                size={20}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[150px]">
-            <DropdownMenuItem
-              onClick={() => changeLanguage("uz")}
-              className="flex items-center justify-between gap-2 cursor-pointer"
-            >
-              <span>O'zbek (UZ)</span>
-              {i18n.language === "uz" && <Check size={16} className="text-primary" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => changeLanguage("ru")}
-              className="flex items-center justify-between gap-2 cursor-pointer"
-            >
-              <span>Русский (RU)</span>
-              {i18n.language === "ru" && <Check size={16} className="text-primary" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => changeLanguage("en")}
-              className="flex items-center justify-between gap-2 cursor-pointer"
-            >
-              <span>English (EN)</span>
-              {i18n.language === "en" && <Check size={16} className="text-primary" />}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Dropdown menu={{ items: langItems }} placement="bottomRight" arrow>
+          <button
+            className="p-2 hover:bg-accent rounded-lg transition-colors"
+            title={t("changeLanguage")}
+          >
+            <Globe
+              size={20}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            />
+          </button>
+        </Dropdown>
 
         {/* Email / role - hidden on mobile */}
-        <span className="text-sm text-muted-foreground hidden sm:inline">
+        <span className="text-sm text-muted-foreground hidden sm:inline mr-2">
           {email || t("admin")}
         </span>
 

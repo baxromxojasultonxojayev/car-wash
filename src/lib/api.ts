@@ -132,8 +132,16 @@ export async function api<T = any>(path: string, options: ApiOptions = {}): Prom
   const payload = await parseResponse(res);
 
   if (!res.ok) {
-    const message = payload?.message || payload?.error || payload?.detail || res.statusText || "Request error";
-    throw { status: res.status, message, details: payload } as ApiError;
+    let message = payload?.message || payload?.error || payload?.detail || res.statusText || "Request error";
+
+    // If message is an array (like FastAPI validation errors), extract first message or stringify
+    if (Array.isArray(message)) {
+      message = message[0]?.msg || message[0]?.message || JSON.stringify(message);
+    } else if (typeof message === 'object' && message !== null) {
+      message = message.message || message.error || message.msg || JSON.stringify(message);
+    }
+
+    throw { status: res.status, message: String(message), details: payload } as ApiError;
   }
 
   return payload;

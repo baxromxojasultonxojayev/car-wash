@@ -8,30 +8,14 @@ import {
   Car,
   Filter,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, Select, Button, Table, Typography, Space, Row, Col } from 'antd';
 import {
   AreaChart,
   Area,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as ChartTooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -39,6 +23,8 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+
+const { Title, Text } = Typography;
 
 const revenueData = [
   { name: 'Dush', revenue: 2400000 },
@@ -86,105 +72,120 @@ export default function StatisticsPage() {
   const totalRevenue = revenueData.reduce((sum, d) => sum + d.revenue, 0);
   const totalSessions = serviceData.reduce((sum, d) => sum + d.count, 0);
 
+  const transactionColumns = [
+    {
+      title: t('date'),
+      dataIndex: 'date',
+      key: 'date',
+    },
+    {
+      title: t('kiosk'),
+      dataIndex: 'kiosk',
+      key: 'kiosk',
+    },
+    {
+      title: t('service'),
+      dataIndex: 'service',
+      key: 'service',
+    },
+    {
+      title: t('amount'),
+      dataIndex: 'amount',
+      key: 'amount',
+      align: 'right' as const,
+      render: (val: number) => <Text strong>{formatCurrency(val)}</Text>
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('statistics')}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('viewStatistics')}</p>
+          <Title level={2} className="!mb-0 !text-foreground">{t('statistics')}</Title>
+          <Text className="text-muted-foreground">{t('viewStatistics')}</Text>
         </div>
-        <div className="flex gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[140px]">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">{t('today')}</SelectItem>
-              <SelectItem value="week">{t('thisWeek')}</SelectItem>
-              <SelectItem value="month">{t('thisMonth')}</SelectItem>
-              <SelectItem value="year">{t('thisYear')}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={kioskFilter} onValueChange={setKioskFilter}>
-            <SelectTrigger className="w-[160px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('allKiosks')}</SelectItem>
-              <SelectItem value="1">Premium Moyka #1</SelectItem>
-              <SelectItem value="2">Express Zapravka</SelectItem>
-              <SelectItem value="3">Auto Service Pro</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Space size="small">
+          <Select 
+            value={dateRange} 
+            onChange={setDateRange} 
+            className="w-[140px]"
+            size="large"
+            suffixIcon={<Calendar size={14} />}
+            options={[
+              { value: 'today', label: t('today') },
+              { value: 'week', label: t('thisWeek') },
+              { value: 'month', label: t('thisMonth') },
+              { value: 'year', label: t('thisYear') },
+            ]}
+          />
+          <Select 
+            value={kioskFilter} 
+            onChange={setKioskFilter} 
+            className="w-[160px]"
+            size="large"
+            suffixIcon={<Filter size={14} />}
+            options={[
+              { value: 'all', label: t('allKiosks') },
+              { value: '1', label: 'Premium Moyka #1' },
+              { value: '2', label: 'Express Zapravka' },
+              { value: '3', label: 'Auto Service Pro' },
+            ]}
+          />
+        </Space>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalRevenue')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+      <Row gutter={[16, 16]}>
+        <Col xs={12} lg={6}>
+          <Card bordered={false} className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('totalRevenue')}</Text>
+            <Space align="center" className="mb-2">
               <DollarSign className="h-5 w-5 text-green-500" />
               <span className="text-xl font-bold">{formatCurrency(totalRevenue)}</span>
-            </div>
-            <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+            </Space>
+            <p className="text-xs text-green-500 mt-1 flex items-center gap-1 mb-0">
               <TrendingUp className="h-3 w-3" />
               +12.5% {t('fromLastWeek')}
             </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalSessions')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+          </Card>
+        </Col>
+        <Col xs={12} lg={6}>
+          <Card bordered={false} className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('totalSessions')}</Text>
+            <Space align="center" className="mb-2">
               <Car className="h-5 w-5 text-blue-500" />
               <span className="text-2xl font-bold">{totalSessions}</span>
-            </div>
-            <p className="text-xs text-blue-500 mt-1 flex items-center gap-1">
+            </Space>
+            <p className="text-xs text-blue-500 mt-1 flex items-center gap-1 mb-0">
               <TrendingUp className="h-3 w-3" />
               +8.2% {t('fromLastWeek')}
             </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('averageCheck')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+          </Card>
+        </Col>
+        <Col xs={12} lg={6}>
+          <Card bordered={false} className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('averageCheck')}</Text>
+            <Space align="center">
               <BarChart3 className="h-5 w-5 text-purple-500" />
               <span className="text-xl font-bold">{formatCurrency(Math.round(totalRevenue / totalSessions))}</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activeKiosks')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+            </Space>
+          </Card>
+        </Col>
+        <Col xs={12} lg={6}>
+          <Card bordered={false} className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('activeKiosks')}</Text>
+            <Space align="center">
               <BarChart3 className="h-5 w-5 text-orange-500" />
               <span className="text-2xl font-bold">4</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </Space>
+          </Card>
+        </Col>
+      </Row>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('weeklyRevenue')}</CardTitle>
-            <CardDescription>{t('revenueByDay')}</CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={12}>
+          <Card bordered={false} title={t('weeklyRevenue')} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '20px' } }}>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueData}>
@@ -194,47 +195,40 @@ export default function StatisticsPage() {
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="name" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" tickFormatter={(v) => `${v / 1000000}M`} />
-                  <Tooltip
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                  <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} />
+                  <YAxis stroke="#9ca3af" axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000000}M`} />
+                  <ChartTooltip
                     formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
-                    contentStyle={{ background: '#1f2937', border: 'none', borderRadius: '8px' }}
+                    contentStyle={{ background: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRevenue)" />
+                  <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+        </Col>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('serviceDistribution')}</CardTitle>
-            <CardDescription>{t('sessionsByService')}</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Col xs={24} lg={12}>
+          <Card bordered={false} title={t('serviceDistribution')} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '20px' } }}>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={serviceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="name" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip contentStyle={{ background: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                  <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} />
+                  <YAxis stroke="#9ca3af" axisLine={false} tickLine={false} />
+                  <ChartTooltip contentStyle={{ background: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }} />
                   <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </Card>
+        </Col>
+      </Row>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('kioskDistribution')}</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={8}>
+          <Card bordered={false} title={t('kioskDistribution')} className="bg-card border border-border/20 shadow-sm h-full" styles={{ body: { padding: '20px' } }}>
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -248,52 +242,36 @@ export default function StatisticsPage() {
                     dataKey="value"
                   >
                     {kioskData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="transparent" />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ background: '#1f2937', border: 'none', borderRadius: '8px' }} />
+                  <ChartTooltip contentStyle={{ background: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
+            <Space wrap justify="center" className="w-full mt-4">
               {kioskData.map((d, i) => (
-                <div key={d.name} className="flex items-center gap-2">
+                <Space key={d.name} size={4}>
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
-                  <span className="text-sm text-muted-foreground">{d.name}</span>
-                </div>
+                  <Text className="text-muted-foreground text-sm">{d.name}</Text>
+                </Space>
               ))}
-            </div>
-          </CardContent>
-        </Card>
+            </Space>
+          </Card>
+        </Col>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{t('recentTransactions')}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('date')}</TableHead>
-                  <TableHead>{t('kiosk')}</TableHead>
-                  <TableHead>{t('service')}</TableHead>
-                  <TableHead className="text-right">{t('amount')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactionData.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>{tx.date}</TableCell>
-                    <TableCell>{tx.kiosk}</TableCell>
-                    <TableCell>{tx.service}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(tx.amount)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+        <Col xs={24} lg={16}>
+          <Card bordered={false} title={t('recentTransactions')} className="bg-card border border-border/20 shadow-sm overflow-hidden" styles={{ body: { padding: '0' } }}>
+            <Table 
+              dataSource={transactionData} 
+              columns={transactionColumns} 
+              pagination={false} 
+              rowKey="id"
+              className="ant-table-custom"
+            />
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 }

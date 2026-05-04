@@ -1,11 +1,7 @@
-
-
 import { useTranslation } from "react-i18next";
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -17,7 +13,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { Card } from "@/components/ui/card";
+import { Card } from "antd";
 import { Zap, Users, Building2, DollarSign, TrendingUp, TrendingDown, CreditCard, Activity } from "lucide-react";
 
 const sessionData = [
@@ -113,8 +109,10 @@ export default function Dashboard() {
           return (
             <Card
               key={stat.label}
-              className={`relative overflow-hidden bg-gradient-to-br ${stat.bgGradient} border-0 p-3 sm:p-4 lg:p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group`}
+              bordered={false}
+              className={`relative overflow-hidden bg-gradient-to-br ${stat.bgGradient} p-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group`}
               style={{ animationDelay: `${index * 100}ms` }}
+              styles={{ body: { padding: '1.5rem' } }}
             >
               {/* Background decoration */}
               <div className={`absolute -right-4 -top-4 w-16 sm:w-24 h-16 sm:h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-20 blur-2xl group-hover:opacity-30 transition-opacity`} />
@@ -146,7 +144,7 @@ export default function Dashboard() {
         {additionalStats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.label} className="bg-card/50 backdrop-blur border border-border/30 p-3 sm:p-4 hover:bg-card/80 transition-colors">
+            <Card key={stat.label} bordered={false} className="bg-card/50 backdrop-blur border border-border/30 hover:bg-card/80 transition-colors" styles={{ body: { padding: '1rem' } }}>
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className={`p-1.5 sm:p-2 rounded-lg ${stat.bg}`}>
                   <Icon className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${stat.color}`} />
@@ -161,7 +159,7 @@ export default function Dashboard() {
         })}
         
         {/* Weekly Progress Mini Card */}
-        <Card className="bg-card/50 backdrop-blur border border-border/30 p-3 sm:p-4 col-span-2 hover:bg-card/80 transition-colors">
+        <Card bordered={false} className="bg-card/50 backdrop-blur border border-border/30 col-span-2 hover:bg-card/80 transition-colors" styles={{ body: { padding: '1rem' } }}>
           <div className="flex items-center justify-between">
             <div className="min-w-0">
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{t("weeklyRevenue")}</p>
@@ -193,7 +191,7 @@ export default function Dashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Revenue Chart */}
-        <Card className="lg:col-span-2 bg-card/80 backdrop-blur border border-border/30 p-4 sm:p-6 hover:shadow-lg transition-shadow">
+        <Card bordered={false} className="lg:col-span-2 bg-card/80 backdrop-blur border border-border/30 hover:shadow-lg transition-shadow" styles={{ body: { padding: '1.5rem' } }}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
             <div>
               <h3 className="text-base sm:text-lg font-bold text-foreground">{t("weeklyRevenue")}</h3>
@@ -241,7 +239,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Payment Methods Pie Chart */}
-        <Card className="bg-card/80 backdrop-blur border border-border/30 p-4 sm:p-6 hover:shadow-lg transition-shadow">
+        <Card bordered={false} className="bg-card/80 backdrop-blur border border-border/30 hover:shadow-lg transition-shadow" styles={{ body: { padding: '1.5rem' } }}>
           <h3 className="text-base sm:text-lg font-bold text-foreground mb-1 sm:mb-2">{t("paymentMethods")}</h3>
           <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">Distribution by method</p>
           <div className="h-[160px] sm:h-[200px]">
@@ -287,7 +285,7 @@ export default function Dashboard() {
       </div>
 
       {/* Sessions Bar Chart */}
-      <Card className="bg-card/80 backdrop-blur border border-border/30 p-4 sm:p-6 hover:shadow-lg transition-shadow">
+      <Card bordered={false} className="bg-card/80 backdrop-blur border border-border/30 hover:shadow-lg transition-shadow" styles={{ body: { padding: '1.5rem' } }}>
         <div className="flex items-start sm:items-center justify-between mb-4 sm:mb-6">
           <div>
             <h3 className="text-base sm:text-lg font-bold text-foreground">{t("washSessions")}</h3>

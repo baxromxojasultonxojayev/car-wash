@@ -295,5 +295,9 @@
   "platformSettings": "Platform Settings",
   "dbMigrationExport": "Migration and Export",
   "superAdmin": "Super Admin",
-  "admin": "Admin"
+  "admin": "Admin",
+  "logoutConfirmTitle": "Confirm Logout",
+  "logoutConfirmMessage": "Are you sure you want to log out of the system?",
+  "logoutConfirmYes": "YES",
+  "logoutConfirmNo": "NO"
 }

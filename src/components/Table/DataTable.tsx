@@ -1,16 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Table, Input, Button, Card, Empty, Pagination, Spin } from "antd";
 import {
     Search,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
     Loader2,
 } from "lucide-react";
+import type { TableProps } from 'antd';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -82,55 +77,62 @@ export default function DataTable<T extends Record<string, any>>({
 
     // ─── Search ─────────────────────────────────────────────────────
 
-    const searchableKeys = columns
-        .filter((c) => c.searchable !== false)
-        .map((c) => c.key);
+    const searchableKeys = useMemo(() => 
+        columns
+            .filter((c) => c.searchable !== false)
+            .map((c) => c.key),
+        [columns]
+    );
 
-    const filteredData = searchTerm
-        ? data.filter((row) =>
-            searchableKeys.some((key) => {
-                const val = row[key];
-                if (val === null || val === undefined) return false;
-                return String(val).toLowerCase().includes(searchTerm.toLowerCase());
-            })
-        )
-        : data;
+    const filteredData = useMemo(() => 
+        searchTerm
+            ? data.filter((row) =>
+                searchableKeys.some((key) => {
+                    const val = row[key];
+                    if (val === null || val === undefined) return false;
+                    return String(val).toLowerCase().includes(searchTerm.toLowerCase());
+                })
+            )
+            : data,
+        [data, searchTerm, searchableKeys]
+    );
 
-    // ─── Pagination ─────────────────────────────────────────────────
+    // ─── Ant Design Table Columns ────────────────────────────────────
 
-    const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
-    const safeCurrentPage = Math.min(currentPage, totalPages);
-    const startIndex = (safeCurrentPage - 1) * pageSize;
-    const paginatedData = showPagination
-        ? filteredData.slice(startIndex, startIndex + pageSize)
-        : filteredData;
+    const antColumns: TableProps<T>['columns'] = useMemo(() => 
+        columns.map(col => ({
+            title: col.header,
+            dataIndex: col.key,
+            key: col.key,
+            align: col.align,
+            width: col.maxWidth,
+            className: `
+                ${col.hideOnMobile ? "hidden md:table-cell" : ""}
+                ${col.hideOnTablet ? "hidden lg:table-cell" : ""}
+            `,
+            onHeaderCell: () => ({
+                className: `
+                    ${col.hideOnMobile ? "hidden md:table-cell" : ""}
+                    ${col.hideOnTablet ? "hidden lg:table-cell" : ""}
+                `,
+            }),
+            render: (value: any, record: T, index: number) => 
+                col.render ? col.render(value, record, index) : (value ?? "-")
+        })),
+        [columns]
+    );
 
-    const goToPage = (page: number) => {
-        setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-    };
-
-    // ─── Loading state ─────────────────────────────────────────────
-
-    if (loading) {
-        return (
-            <Card className="bg-card border border-border/20 p-12 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                <p className="text-muted-foreground text-sm">{t("loading") || "Yuklanmoqda..."}</p>
-            </Card>
-        );
-    }
-
-    // ─── Error state ────────────────────────────────────────────────
+    // ─── Render ─────────────────────────────────────────────────────
 
     if (error) {
         return (
-            <Card className="bg-card border border-border/20 p-8 flex flex-col items-center justify-center gap-3">
+            <Card bordered={false} className="bg-card border border-border/20 p-8 flex flex-col items-center justify-center gap-3">
                 <p className="text-red-500 text-sm">{error}</p>
                 {onRetry && (
                     <Button
                         onClick={onRetry}
-                        variant="outline"
-                        size="sm"
+                        type="default"
+                        size="small"
                         className="mt-2"
                     >
                         {t("retry") || "Qayta urinish"}
@@ -140,197 +142,126 @@ export default function DataTable<T extends Record<string, any>>({
         );
     }
 
-    // ─── Render ─────────────────────────────────────────────────────
-
-    const noResults =
-        emptyMessage || t("noData") || "Ma'lumot topilmadi";
+    const paginatedData = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredData.slice(start, start + pageSize);
+    }, [filteredData, currentPage, pageSize]);
 
     return (
         <div className="space-y-4">
             {/* Search */}
             {searchable && (
-                <Card className="bg-card border border-border/20 p-3 sm:p-4">
-                    <div className="relative">
-                        <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                            size={18}
-                        />
-                        <Input
-                            placeholder={searchPlaceholder || t("search") || "Qidirish..."}
-                            value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="pl-10 bg-input text-foreground border-border/30 text-sm"
-                        />
-                    </div>
+                <Card bordered={false} className="bg-card border border-border/20" styles={{ body: { padding: '12px' } }}>
+                    <Input
+                        placeholder={searchPlaceholder || t("search") || "Qidirish..."}
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                        prefix={<Search size={18} className="text-muted-foreground mr-2" />}
+                        className="bg-transparent border-none focus:ring-0 text-sm h-10"
+                        variant="borderless"
+                    />
                 </Card>
             )}
 
             {/* Mobile Cards */}
             {renderMobileCard && (
                 <div className="block sm:hidden space-y-3">
-                    {paginatedData.length === 0 ? (
-                        <Card className="bg-card border border-border/20 p-6 text-center">
-                            <p className="text-muted-foreground">{noResults}</p>
+                    {loading ? (
+                        <Card bordered={false} className="bg-card border border-border/20 p-12 flex items-center justify-center">
+                            <Spin indicator={<Loader2 className="animate-spin" size={24} />} />
+                        </Card>
+                    ) : filteredData.length === 0 ? (
+                        <Card bordered={false} className="bg-card border border-border/20 p-6 text-center">
+                            <Empty description={emptyMessage || t("noData")} />
                         </Card>
                     ) : (
-                        paginatedData.map((row, idx) => (
-                            <div key={getRowId ? getRowId(row) : startIndex + idx}>
-                                {renderMobileCard(row, startIndex + idx)}
-                            </div>
-                        ))
+                        <>
+                            {paginatedData.map((row, idx) => (
+                                <div key={getRowId ? getRowId(row) : idx}>
+                                    {renderMobileCard(row, (currentPage - 1) * pageSize + idx)}
+                                </div>
+                            ))}
+                            {showPagination && filteredData.length > pageSize && (
+                                <div className="flex justify-center pt-2">
+                                    <Pagination
+                                        current={currentPage}
+                                        pageSize={pageSize}
+                                        total={filteredData.length}
+                                        onChange={setCurrentPage}
+                                        showSizeChanger={false}
+                                        size="small"
+                                    />
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             )}
 
             {/* Desktop Table */}
             <Card
-                className={`${renderMobileCard ? "hidden sm:block" : "block"
-                    } bg-card border border-border/20 overflow-hidden`}
+                bordered={false}
+                className={`${renderMobileCard ? "hidden sm:block" : "block"} bg-card border border-border/20 overflow-hidden`}
+                styles={{ body: { padding: 0 } }}
             >
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="border-b border-border/20 bg-sidebar/20">
-                            <tr>
-                                {columns.map((col) => (
-                                    <th
-                                        key={col.key}
-                                        className={`px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm font-semibold text-foreground
-                      ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"}
-                      ${col.hideOnMobile ? "hidden md:table-cell" : ""}
-                      ${col.hideOnTablet ? "hidden lg:table-cell" : ""}
-                    `}
-                                    >
-                                        {col.header}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {paginatedData.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={columns.length}
-                                        className="px-6 py-8 text-center text-muted-foreground"
-                                    >
-                                        {noResults}
-                                    </td>
-                                </tr>
-                            ) : (
-                                paginatedData.map((row, idx) => (
-                                    <tr
-                                        key={getRowId ? getRowId(row) : startIndex + idx}
-                                        className="border-b border-border/20 hover:bg-sidebar/10 transition-colors"
-                                    >
-                                        {columns.map((col) => (
-                                            <td
-                                                key={col.key}
-                                                className={`px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm
-                          ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"}
-                          ${col.hideOnMobile ? "hidden md:table-cell" : ""}
-                          ${col.hideOnTablet ? "hidden lg:table-cell" : ""}
-                        `}
-                                                style={
-                                                    col.maxWidth
-                                                        ? { maxWidth: col.maxWidth }
-                                                        : undefined
-                                                }
-                                            >
-                                                {col.render
-                                                    ? col.render(row[col.key], row, startIndex + idx)
-                                                    : row[col.key] ?? "-"}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <Table<T>
+                    columns={antColumns}
+                    dataSource={filteredData}
+                    loading={loading}
+                    rowKey={getRowId || ((record, index) => index?.toString() || '')}
+                    pagination={showPagination ? {
+                        current: currentPage,
+                        pageSize: pageSize,
+                        total: filteredData.length,
+                        onChange: (page) => setCurrentPage(page),
+                        position: ['bottomRight'],
+                        className: 'px-6 py-4',
+                        showSizeChanger: false,
+                        showTotal: (total, range) => (
+                            <span className="text-xs text-muted-foreground">
+                                {t("showing") || "Showing"} <span className="font-medium text-foreground">{range[0]}–{range[1]}</span> / {total}
+                            </span>
+                        )
+                    } : false}
+                    locale={{
+                        emptyText: <Empty description={emptyMessage || t("noData")} />
+                    }}
+                    className="antd-custom-table"
+                />
             </Card>
 
-            {/* Pagination */}
-            {showPagination && filteredData.length > pageSize && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
-                    <p className="text-xs text-muted-foreground">
-                        {t("showing") || "Ko'rsatilmoqda"}{" "}
-                        <span className="font-medium text-foreground">
-                            {startIndex + 1}–{Math.min(startIndex + pageSize, filteredData.length)}
-                        </span>{" "}
-                        / {filteredData.length}
-                    </p>
-
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            disabled={safeCurrentPage === 1}
-                            onClick={() => goToPage(1)}
-                        >
-                            <ChevronsLeft size={14} />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            disabled={safeCurrentPage === 1}
-                            onClick={() => goToPage(safeCurrentPage - 1)}
-                        >
-                            <ChevronLeft size={14} />
-                        </Button>
-
-                        {/* Page numbers */}
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let page: number;
-                            if (totalPages <= 5) {
-                                page = i + 1;
-                            } else if (safeCurrentPage <= 3) {
-                                page = i + 1;
-                            } else if (safeCurrentPage >= totalPages - 2) {
-                                page = totalPages - 4 + i;
-                            } else {
-                                page = safeCurrentPage - 2 + i;
-                            }
-                            return (
-                                <Button
-                                    key={page}
-                                    variant={page === safeCurrentPage ? "default" : "outline"}
-                                    size="icon"
-                                    className={`h-8 w-8 text-xs ${page === safeCurrentPage
-                                            ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                            : ""
-                                        }`}
-                                    onClick={() => goToPage(page)}
-                                >
-                                    {page}
-                                </Button>
-                            );
-                        })}
-
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            disabled={safeCurrentPage === totalPages}
-                            onClick={() => goToPage(safeCurrentPage + 1)}
-                        >
-                            <ChevronRight size={14} />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            disabled={safeCurrentPage === totalPages}
-                            onClick={() => goToPage(totalPages)}
-                        >
-                            <ChevronsRight size={14} />
-                        </Button>
-                    </div>
-                </div>
-            )}
+            <style dangerouslySetInnerHTML={{ __html: `
+                .antd-custom-table .ant-table {
+                    background: transparent !important;
+                }
+                .antd-custom-table .ant-table-thead > tr > th {
+                    background: var(--sidebar-bg) !important;
+                    color: var(--foreground) !important;
+                    border-bottom: 1px solid var(--border) !important;
+                    opacity: 0.8;
+                    font-weight: 600;
+                    font-size: 13px;
+                }
+                .antd-custom-table .ant-table-tbody > tr > td {
+                    border-bottom: 1px solid var(--border) !important;
+                    color: var(--foreground) !important;
+                    background: transparent !important;
+                    transition: all 0.3s;
+                }
+                .antd-custom-table .ant-table-tbody > tr:hover > td {
+                    background: var(--accent) !important;
+                    opacity: 0.9;
+                }
+                .antd-custom-table .ant-pagination-item-active {
+                    border-color: var(--primary) !important;
+                }
+                .antd-custom-table .ant-pagination-item-active a {
+                    color: var(--primary) !important;
+                }
+            `}} />
         </div>
     );
 }

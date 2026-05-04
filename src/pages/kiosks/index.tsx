@@ -1,10 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
-  Search,
-  MoreHorizontal,
   Edit,
   Trash2,
   Eye,
@@ -13,39 +11,10 @@ import {
   Wrench,
   Car,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { Button, Card, Input, Select, Badge, Modal, Space, Typography, Tag } from 'antd';
+import DataTable, { Column } from '@/components/Table/DataTable';
+
+const { Title, Text } = Typography;
 
 type KioskType = 'moyka' | 'zapravka' | 'auto_service';
 
@@ -107,7 +76,6 @@ export default function KiosksPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [kiosks, setKiosks] = useState<Kiosk[]>(mockKiosks);
-  const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingKiosk, setEditingKiosk] = useState<Kiosk | null>(null);
@@ -118,13 +86,12 @@ export default function KiosksPage() {
     address: '',
   });
 
-  const filteredKiosks = kiosks.filter((kiosk) => {
-    const matchesSearch =
-      kiosk.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      kiosk.address.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'all' || kiosk.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  const filteredKiosks = useMemo(() => {
+    return kiosks.filter((kiosk) => {
+      const matchesType = typeFilter === 'all' || kiosk.type === typeFilter;
+      return matchesType;
+    });
+  }, [kiosks, typeFilter]);
 
   const handleCreate = () => {
     setEditingKiosk(null);
@@ -181,227 +148,274 @@ export default function KiosksPage() {
     autoService: kiosks.filter((k) => k.type === 'auto_service').length,
   };
 
+  const columns: Column<Kiosk>[] = [
+    {
+      key: 'name',
+      header: t('name'),
+      searchable: true,
+      render: (val, row) => {
+        const TypeIcon = typeIcons[row.type];
+        return (
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg ${typeColors[row.type]} flex items-center justify-center flex-shrink-0`}>
+              <TypeIcon className="h-4 w-4 text-white" />
+            </div>
+            <div className="min-w-0">
+              <Text strong className="block truncate">{row.name}</Text>
+              {row.boxNumbers && (
+                <Text size="small" className="text-muted-foreground block truncate">
+                  Box: {row.boxNumbers}
+                </Text>
+              )}
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'type',
+      header: t('type'),
+      render: (val: KioskType) => (
+        <Tag className="rounded-full border-none px-3">{t(val)}</Tag>
+      )
+    },
+    {
+      key: 'address',
+      header: t('address'),
+      hideOnMobile: true,
+      searchable: true,
+      render: (val) => <Text className="text-muted-foreground">{val}</Text>
+    },
+    {
+      key: 'todayRevenue',
+      header: t('todayRevenue'),
+      align: 'right',
+      render: (val) => <Text strong>{formatCurrency(val)}</Text>
+    },
+    {
+      key: 'status',
+      header: t('status'),
+      align: 'center',
+      render: (val) => (
+        <Tag color={val === 'active' ? 'success' : 'default'} className="rounded-full border-none px-3">
+          {val === 'active' ? t('active') : t('inactive')}
+        </Tag>
+      )
+    },
+    {
+      key: 'actions',
+      header: t('actions'),
+      align: 'right',
+      render: (_, row) => (
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<Eye size={16} />}
+            onClick={() => navigate(`/kiosks/${row.id}`)}
+            className="text-primary"
+          />
+          <Button
+            type="text"
+            icon={<Edit size={16} />}
+            onClick={() => handleEdit(row)}
+            className="text-blue-500"
+          />
+          <Button
+            type="text"
+            icon={<Trash2 size={16} />}
+            onClick={() => handleDelete(row.id)}
+            className="text-red-500"
+          />
+        </Space>
+      )
+    }
+  ];
+
+  const renderMobileCard = (kiosk: Kiosk) => {
+    const TypeIcon = typeIcons[kiosk.type];
+    return (
+      <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '16px' } }}>
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-9 h-9 rounded-xl ${typeColors[kiosk.type]} flex items-center justify-center flex-shrink-0`}>
+              <TypeIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <Text strong className="block truncate text-base">{kiosk.name}</Text>
+              <Text className="text-xs text-muted-foreground">{t(kiosk.type)}</Text>
+            </div>
+          </div>
+          <Tag color={kiosk.status === 'active' ? 'success' : 'default'} className="rounded-full border-none">
+            {kiosk.status === 'active' ? t('active') : t('inactive')}
+          </Tag>
+        </div>
+        <div className="space-y-2 mb-4">
+          <div className="flex justify-between">
+            <Text className="text-muted-foreground text-xs">{t('address')}</Text>
+            <Text className="text-xs truncate max-w-[200px]">{kiosk.address}</Text>
+          </div>
+          <div className="flex justify-between items-center">
+            <Text className="text-muted-foreground text-xs">{t('todayRevenue')}</Text>
+            <Text strong className="text-primary">{formatCurrency(kiosk.todayRevenue)}</Text>
+          </div>
+        </div>
+        <div className="flex gap-2 pt-2 border-t border-border/10">
+          <Button 
+            className="flex-1" 
+            icon={<Eye size={16} />}
+            onClick={() => navigate(`/kiosks/${kiosk.id}`)}
+          >
+            {t('view')}
+          </Button>
+          <Button 
+            className="flex-1" 
+            icon={<Edit size={16} />}
+            onClick={() => handleEdit(kiosk)}
+          >
+            {t('edit')}
+          </Button>
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('kiosks')}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('manageKiosks')}</p>
+          <Title level={2} className="!mb-0 !text-foreground">{t('kiosks')}</Title>
+          <Text className="text-muted-foreground">{t('manageKiosks')}</Text>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus size={18} />
+        <Button 
+          type="primary" 
+          icon={<Plus size={18} />} 
+          onClick={handleCreate} 
+          size="large"
+          className="bg-blue-600 hover:bg-blue-700 h-11"
+        >
           {t('newKiosk')}
         </Button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('total')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">{stats.total}</span>
+        <Card bordered={false} className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('total')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Zap className="h-5 w-5 text-blue-500" />
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{stats.total}</span>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('moyka')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Car className="h-5 w-5 text-blue-500" />
-              <span className="text-2xl font-bold">{stats.moyka}</span>
+        <Card bordered={false} className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('moyka')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-cyan-500/20 rounded-lg">
+              <Car className="h-5 w-5 text-cyan-500" />
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{stats.moyka}</span>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('zapravka')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+        <Card bordered={false} className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('zapravka')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-500/20 rounded-lg">
               <Fuel className="h-5 w-5 text-orange-500" />
-              <span className="text-2xl font-bold">{stats.zapravka}</span>
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{stats.zapravka}</span>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('autoService')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+        <Card bordered={false} className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('autoService')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
               <Wrench className="h-5 w-5 text-purple-500" />
-              <span className="text-2xl font-bold">{stats.autoService}</span>
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{stats.autoService}</span>
+          </div>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t('searchKioskPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('allTypes')}</SelectItem>
-                <SelectItem value="moyka">{t('moyka')}</SelectItem>
-                <SelectItem value="zapravka">{t('zapravka')}</SelectItem>
-                <SelectItem value="auto_service">{t('autoService')}</SelectItem>
-              </SelectContent>
+      <Card bordered={false} className="bg-card border border-border/20 shadow-sm overflow-hidden" styles={{ body: { padding: '16px' } }}>
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <Select 
+              value={typeFilter} 
+              onChange={setTypeFilter} 
+              className="w-full sm:w-[200px]"
+              size="large"
+            >
+              <Select.Option value="all">{t('allTypes')}</Select.Option>
+              <Select.Option value="moyka">{t('moyka')}</Select.Option>
+              <Select.Option value="zapravka">{t('zapravka')}</Select.Option>
+              <Select.Option value="auto_service">{t('autoService')}</Select.Option>
             </Select>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('name')}</TableHead>
-                <TableHead>{t('type')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('address')}</TableHead>
-                <TableHead className="text-right">{t('todayRevenue')}</TableHead>
-                <TableHead className="text-center">{t('status')}</TableHead>
-                <TableHead className="text-right">{t('actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredKiosks.map((kiosk) => {
-                const TypeIcon = typeIcons[kiosk.type];
-                return (
-                  <TableRow key={kiosk.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg ${typeColors[kiosk.type]} flex items-center justify-center`}>
-                          <TypeIcon className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <span className="font-medium">{kiosk.name}</span>
-                          {kiosk.boxNumbers && (
-                            <p className="text-xs text-muted-foreground">
-                              Box: {kiosk.boxNumbers}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{t(kiosk.type)}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {kiosk.address}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(kiosk.todayRevenue)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={kiosk.status === 'active' ? 'default' : 'secondary'}>
-                        {kiosk.status === 'active' ? t('active') : t('inactive')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/kiosks/${kiosk.id}`)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            {t('view')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEdit(kiosk)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            {t('edit')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(kiosk.id)} className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {t('delete')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
+        </div>
+
+        <DataTable
+          data={filteredKiosks}
+          columns={columns}
+          searchPlaceholder={t('searchKioskPlaceholder')}
+          renderMobileCard={renderMobileCard}
+          getRowId={(k) => k.id}
+        />
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{editingKiosk ? t('editKiosk') : t('newKiosk')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t('name')}</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={t('kioskNamePlaceholder')}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('type')}</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: KioskType) => setFormData({ ...formData, type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="moyka">{t('moyka')}</SelectItem>
-                  <SelectItem value="zapravka">{t('zapravka')}</SelectItem>
-                  <SelectItem value="auto_service">{t('autoService')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {formData.type === 'moyka' && (
-              <div className="space-y-2">
-                <Label>{t('boxNumbers')}</Label>
-                <Input
-                  value={formData.boxNumbers}
-                  onChange={(e) => setFormData({ ...formData, boxNumbers: e.target.value })}
-                  placeholder="1-10"
-                />
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label>{t('address')}</Label>
-              <Input
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder={t('addressPlaceholder')}
-              />
-            </div>
+      <Modal
+        title={editingKiosk ? t('editKiosk') : t('newKiosk')}
+        open={isDialogOpen}
+        onCancel={() => setIsDialogOpen(false)}
+        onOk={handleSave}
+        okButtonProps={{ disabled: !formData.name }}
+        destroyOnClose
+        width={600}
+      >
+        <div className="space-y-4 py-4">
+          <div className="space-y-1">
+            <Text strong className="text-xs">{t('name')}</Text>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder={t('kioskNamePlaceholder')}
+              size="large"
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {t('cancel')}
-            </Button>
-            <Button onClick={handleSave} disabled={!formData.name}>
-              {t('save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="space-y-1">
+            <Text strong className="text-xs">{t('type')}</Text>
+            <Select
+              value={formData.type}
+              onChange={(value: KioskType) => setFormData({ ...formData, type: value })}
+              className="w-full"
+              size="large"
+            >
+              <Select.Option value="moyka">{t('moyka')}</Select.Option>
+              <Select.Option value="zapravka">{t('zapravka')}</Select.Option>
+              <Select.Option value="auto_service">{t('autoService')}</Select.Option>
+            </Select>
+          </div>
+          {formData.type === 'moyka' && (
+            <div className="space-y-1">
+              <Text strong className="text-xs">{t('boxNumbers')}</Text>
+              <Input
+                value={formData.boxNumbers}
+                onChange={(e) => setFormData({ ...formData, boxNumbers: e.target.value })}
+                placeholder="1-10"
+                size="large"
+              />
+            </div>
+          )}
+          <div className="space-y-1">
+            <Text strong className="text-xs">{t('address')}</Text>
+            <Input
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder={t('addressPlaceholder')}
+              size="large"
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

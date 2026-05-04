@@ -1,9 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Zap, DollarSign, Calendar, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Button, Card, Badge, Typography, Row, Col, Space } from 'antd';
+
+const { Title, Text, Paragraph } = Typography;
 
 export default function KioskDetailPage() {
   const { id } = useParams();
@@ -29,80 +29,84 @@ export default function KioskDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <Button 
+          type="text" 
+          icon={<ArrowLeft size={20} />} 
+          onClick={() => navigate(-1)} 
+          size="large"
+          className="flex items-center justify-center"
+        />
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{kiosk.name}</h1>
-          <p className="text-muted-foreground text-sm">{t('kioskDetails')}</p>
+          <Title level={2} className="!mb-0 !text-foreground">{kiosk.name}</Title>
+          <Text className="text-muted-foreground">{t('kioskDetails')}</Text>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Zap className="h-4 w-4" />
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-3 flex items-center gap-2">
+              <Zap size={14} />
               {t('status')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge variant={kiosk.status === 'active' ? 'default' : 'secondary'}>
-              {kiosk.status === 'active' ? t('active') : t('inactive')}
-            </Badge>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
+            </Text>
+            <Badge 
+              status={kiosk.status === 'active' ? 'success' : 'default'} 
+              text={kiosk.status === 'active' ? t('active') : t('inactive')} 
+              className="font-medium"
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-3 flex items-center gap-2">
+              <DollarSign size={14} />
               {t('todayRevenue')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-xl font-bold">{formatCurrency(kiosk.todayRevenue)}</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
+            </Text>
+            <Title level={4} className="!mb-0">{formatCurrency(kiosk.todayRevenue)}</Title>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-3 flex items-center gap-2">
+              <DollarSign size={14} />
               {t('monthRevenue')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-xl font-bold">{formatCurrency(kiosk.monthRevenue)}</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
+            </Text>
+            <Title level={4} className="!mb-0">{formatCurrency(kiosk.monthRevenue)}</Title>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '20px' } }}>
+            <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-3 flex items-center gap-2">
+              <Calendar size={14} />
               {t('createdAt')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-lg font-medium">{kiosk.createdAt}</span>
-          </CardContent>
-        </Card>
-      </div>
+            </Text>
+            <Title level={4} className="!mb-0">{kiosk.createdAt}</Title>
+          </Card>
+        </Col>
+      </Row>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            {t('address')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">{kiosk.address}</p>
+      <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '24px' } }}>
+        <Space direction="vertical" size="middle" className="w-full">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <MapPin className="h-5 w-5 text-blue-500" />
+            </div>
+            <Title level={4} className="!mb-0">{t('address')}</Title>
+          </div>
+          <Paragraph className="text-muted-foreground text-lg mb-4">
+            {kiosk.address}
+          </Paragraph>
           {kiosk.boxNumbers && (
-            <p className="mt-2">
-              <span className="text-muted-foreground">{t('boxNumbers')}: </span>
-              <Badge variant="outline">{kiosk.boxNumbers}</Badge>
-            </p>
+            <div className="pt-4 border-t border-border/10">
+              <Space>
+                <Text className="text-muted-foreground">{t('boxNumbers')}:</Text>
+                <Tag className="rounded-full border-none px-4 bg-blue-500/10 text-blue-600 font-bold">
+                  {kiosk.boxNumbers}
+                </Tag>
+              </Space>
+            </div>
           )}
-        </CardContent>
+        </Space>
       </Card>
     </div>
   );

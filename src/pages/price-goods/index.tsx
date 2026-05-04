@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
@@ -8,28 +8,10 @@ import {
   Fuel,
   Car,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button, Card, Input, Tag, Modal, Space, Typography, Form, Switch, Tabs } from 'antd';
+import DataTable, { Column } from '@/components/Table/DataTable';
+
+const { Title, Text, Paragraph } = Typography;
 
 interface Service {
   id: string;
@@ -67,8 +49,8 @@ export default function PriceGoodsPage() {
   const [isOilDialogOpen, setIsOilDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [editingOil, setEditingOil] = useState<OilPrice | null>(null);
-  const [serviceForm, setServiceForm] = useState({ name: '', price: '', duration: '' });
-  const [oilForm, setOilForm] = useState({ type: '', price: '' });
+  const [serviceForm] = Form.useForm();
+  const [oilForm] = Form.useForm();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('uz-UZ').format(value) + ' so\'m';
@@ -80,37 +62,42 @@ export default function PriceGoodsPage() {
 
   const handleEditService = (service: Service) => {
     setEditingService(service);
-    setServiceForm({
+    serviceForm.setFieldsValue({
       name: service.name,
-      price: service.price.toString(),
-      duration: service.duration.toString(),
+      price: service.price,
+      duration: service.duration,
     });
     setIsServiceDialogOpen(true);
   };
 
-  const handleSaveService = () => {
-    if (editingService) {
-      setServices(
-        services.map((s) =>
-          s.id === editingService.id
-            ? { ...s, name: serviceForm.name, price: Number(serviceForm.price), duration: Number(serviceForm.duration) }
-            : s
-        )
-      );
-    } else {
-      setServices([
-        ...services,
-        {
-          id: Date.now().toString(),
-          name: serviceForm.name,
-          price: Number(serviceForm.price),
-          duration: Number(serviceForm.duration),
-          isActive: true,
-        },
-      ]);
+  const handleSaveService = async () => {
+    try {
+      const values = await serviceForm.validateFields();
+      if (editingService) {
+        setServices(
+          services.map((s) =>
+            s.id === editingService.id
+              ? { ...s, name: values.name, price: Number(values.price), duration: Number(values.duration) }
+              : s
+          )
+        );
+      } else {
+        setServices([
+          ...services,
+          {
+            id: Date.now().toString(),
+            name: values.name,
+            price: Number(values.price),
+            duration: Number(values.duration),
+            isActive: true,
+          },
+        ]);
+      }
+      setIsServiceDialogOpen(false);
+      setEditingService(null);
+    } catch (error) {
+      console.error('Validate Failed:', error);
     }
-    setIsServiceDialogOpen(false);
-    setEditingService(null);
   };
 
   const handleDeleteService = (id: string) => {
@@ -119,198 +106,279 @@ export default function PriceGoodsPage() {
 
   const handleEditOil = (oil: OilPrice) => {
     setEditingOil(oil);
-    setOilForm({ type: oil.type, price: oil.price.toString() });
+    oilForm.setFieldsValue({ type: oil.type, price: oil.price });
     setIsOilDialogOpen(true);
   };
 
-  const handleSaveOil = () => {
-    if (editingOil) {
-      setOilPrices(
-        oilPrices.map((o) =>
-          o.id === editingOil.id ? { ...o, price: Number(oilForm.price) } : o
-        )
-      );
+  const handleSaveOil = async () => {
+    try {
+      const values = await oilForm.validateFields();
+      if (editingOil) {
+        setOilPrices(
+          oilPrices.map((o) =>
+            o.id === editingOil.id ? { ...o, price: Number(values.price) } : o
+          )
+        );
+      }
+      setIsOilDialogOpen(false);
+      setEditingOil(null);
+    } catch (error) {
+      console.error('Validate Failed:', error);
     }
-    setIsOilDialogOpen(false);
-    setEditingOil(null);
   };
+
+  const serviceColumns: Column<Service>[] = [
+    {
+      key: 'name',
+      header: t('serviceName'),
+      searchable: true,
+      render: (val) => <Text strong>{val}</Text>
+    },
+    {
+      key: 'price',
+      header: t('price'),
+      align: 'right',
+      render: (val) => <Text className="font-mono">{formatCurrency(val)}</Text>
+    },
+    {
+      key: 'duration',
+      header: t('duration'),
+      align: 'center',
+      render: (val) => <Tag className="rounded-full border-none px-3">{val} {t('minutes')}</Tag>
+    },
+    {
+      key: 'status',
+      header: t('status'),
+      align: 'center',
+      render: (_, row) => (
+        <Switch
+          checked={row.isActive}
+          onChange={() => handleToggleService(row.id)}
+          size="small"
+        />
+      )
+    },
+    {
+      key: 'actions',
+      header: t('actions'),
+      align: 'right',
+      render: (_, row) => (
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<Edit size={16} />}
+            onClick={() => handleEditService(row)}
+            className="text-blue-500"
+          />
+          <Button
+            type="text"
+            icon={<Trash2 size={16} />}
+            onClick={() => handleDeleteService(row.id)}
+            className="text-red-500"
+          />
+        </Space>
+      )
+    }
+  ];
+
+  const renderMobileServiceCard = (service: Service) => (
+    <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '16px' } }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="min-w-0 flex-1">
+          <Text strong className="block truncate text-base">{service.name}</Text>
+          <Text className="text-muted-foreground block truncate">{service.duration} {t('minutes')}</Text>
+        </div>
+        <Switch
+          checked={service.isActive}
+          onChange={() => handleToggleService(service.id)}
+          size="small"
+        />
+      </div>
+      <div className="flex justify-between items-center mb-4">
+        <Text strong className="text-blue-500">{formatCurrency(service.price)}</Text>
+      </div>
+      <div className="flex gap-2 pt-2 border-t border-border/10">
+        <Button className="flex-1" icon={<Edit size={16} />} onClick={() => handleEditService(service)}>
+          {t('edit')}
+        </Button>
+        <Button danger className="flex-1" icon={<Trash2 size={16} />} onClick={() => handleDeleteService(service.id)}>
+          {t('delete')}
+        </Button>
+      </div>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t('priceGoods')}</h1>
-        <p className="text-muted-foreground text-sm mt-1">{t('managePrices')}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <Title level={2} className="!mb-0 !text-foreground">{t('priceGoods')}</Title>
+          <Text className="text-muted-foreground">{t('managePrices')}</Text>
+        </div>
       </div>
 
-      <Tabs defaultValue="services" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="services" className="gap-2">
-            <Car className="h-4 w-4" />
-            {t('services')}
-          </TabsTrigger>
-          <TabsTrigger value="oil" className="gap-2">
-            <Fuel className="h-4 w-4" />
-            {t('oilPrices')}
-          </TabsTrigger>
-        </TabsList>
+      <Tabs
+        defaultActiveKey="services"
+        className="custom-tabs"
+        items={[
+          {
+            key: 'services',
+            label: (
+              <Space>
+                <Car size={16} />
+                {t('services')}
+              </Space>
+            ),
+            children: (
+              <div className="space-y-6 pt-2">
+                <div className="flex justify-end">
+                  <Button
+                    type="primary"
+                    icon={<Plus size={18} />}
+                    onClick={() => {
+                      setEditingService(null);
+                      serviceForm.resetFields();
+                      setIsServiceDialogOpen(true);
+                    }}
+                    size="large"
+                    className="bg-blue-600 hover:bg-blue-700 h-11"
+                  >
+                    {t('addService')}
+                  </Button>
+                </div>
+                <Card bordered={false} className="bg-card border border-border/20 shadow-sm overflow-hidden" styles={{ body: { padding: '16px' } }}>
+                  <DataTable
+                    data={services}
+                    columns={serviceColumns}
+                    searchPlaceholder={t('searchServicePlaceholder')}
+                    renderMobileCard={renderMobileServiceCard}
+                    getRowId={(s) => s.id}
+                  />
+                </Card>
+              </div>
+            )
+          },
+          {
+            key: 'oil',
+            label: (
+              <Space>
+                <Fuel size={16} />
+                {t('oilPrices')}
+              </Space>
+            ),
+            children: (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                {oilPrices.map((oil) => (
+                  <Card
+                    key={oil.id}
+                    bordered={false}
+                    className="bg-card border border-border/20 shadow-md relative overflow-hidden group transition-all hover:shadow-lg"
+                    styles={{ body: { padding: '24px' } }}
+                  >
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
+                    <div className="flex items-center justify-between mb-4">
+                      <Tag color="blue" className="text-lg font-bold px-4 py-1 rounded-full border-none m-0 shadow-sm">
+                        {oil.type}
+                      </Tag>
+                      <Button
+                        type="text"
+                        icon={<Edit size={18} />}
+                        onClick={() => handleEditOil(oil)}
+                        className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-blue-500/10 rounded-lg">
+                        <DollarSign className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <Text className="text-3xl font-black tracking-tight">{formatCurrency(oil.price)}</Text>
+                    </div>
+                    <Paragraph className="text-muted-foreground text-sm flex items-center gap-2 mb-0">
+                      <Car size={14} />
+                      {oil.kioskName}
+                    </Paragraph>
+                  </Card>
+                ))}
+              </div>
+            )
+          }
+        ]}
+      />
 
-        <TabsContent value="services" className="space-y-6">
-          <div className="flex justify-end">
-            <Button
-              onClick={() => {
-                setEditingService(null);
-                setServiceForm({ name: '', price: '', duration: '' });
-                setIsServiceDialogOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Plus size={18} />
-              {t('addService')}
-            </Button>
-          </div>
+      <Modal
+        title={editingService ? t('editService') : t('addService')}
+        open={isServiceDialogOpen}
+        onCancel={() => setIsServiceDialogOpen(false)}
+        onOk={handleSaveService}
+        destroyOnClose
+        width={500}
+        okButtonProps={{ size: 'large' }}
+        cancelButtonProps={{ size: 'large' }}
+      >
+        <Form
+          form={serviceForm}
+          layout="vertical"
+          className="py-4"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="name"
+            label={t('serviceName')}
+            rules={[{ required: true, message: t('enterServiceName') }]}
+          >
+            <Input placeholder={t('enterServiceName')} size="large" />
+          </Form.Item>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('washServices')}</CardTitle>
-              <CardDescription>{t('washServicesDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('serviceName')}</TableHead>
-                    <TableHead className="text-right">{t('price')}</TableHead>
-                    <TableHead className="text-center">{t('duration')}</TableHead>
-                    <TableHead className="text-center">{t('status')}</TableHead>
-                    <TableHead className="text-right">{t('actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {services.map((service) => (
-                    <TableRow key={service.id}>
-                      <TableCell className="font-medium">{service.name}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(service.price)}</TableCell>
-                      <TableCell className="text-center">{service.duration} {t('minutes')}</TableCell>
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={service.isActive}
-                          onCheckedChange={() => handleToggleService(service.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditService(service)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteService(service.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <Form.Item
+            name="price"
+            label={`${t('price')} (so'm)`}
+            rules={[{ required: true, message: t('enterPrice') }]}
+          >
+            <Input type="number" placeholder="30000" size="large" suffix="so'm" />
+          </Form.Item>
 
-        <TabsContent value="oil" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {oilPrices.map((oil) => (
-              <Card key={oil.id} className="relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-orange-500 to-orange-600" />
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-lg font-bold">
-                      {oil.type}
-                    </Badge>
-                    <Button variant="ghost" size="icon" onClick={() => handleEditOil(oil)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-orange-500" />
-                    <span className="text-2xl font-bold">{formatCurrency(oil.price)}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">{oil.kioskName}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+          <Form.Item
+            name="duration"
+            label={`${t('duration')} (${t('minutes')})`}
+            rules={[{ required: true, message: t('enterDuration') }]}
+          >
+            <Input type="number" placeholder="15" size="large" suffix={t('minutes')} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
-      {/* Service Dialog */}
-      <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{editingService ? t('editService') : t('addService')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t('serviceName')}</Label>
-              <Input
-                value={serviceForm.name}
-                onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('price')} (so'm)</Label>
-              <Input
-                type="number"
-                value={serviceForm.price}
-                onChange={(e) => setServiceForm({ ...serviceForm, price: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('duration')} ({t('minutes')})</Label>
-              <Input
-                type="number"
-                value={serviceForm.duration}
-                onChange={(e) => setServiceForm({ ...serviceForm, duration: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsServiceDialogOpen(false)}>
-              {t('cancel')}
-            </Button>
-            <Button onClick={handleSaveService}>{t('save')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Modal
+        title={t('editOilPrice')}
+        open={isOilDialogOpen}
+        onCancel={() => setIsOilDialogOpen(false)}
+        onOk={handleSaveOil}
+        destroyOnClose
+        width={400}
+        okButtonProps={{ size: 'large' }}
+        cancelButtonProps={{ size: 'large' }}
+      >
+        <Form
+          form={oilForm}
+          layout="vertical"
+          className="py-4"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="type"
+            label={t('fuelType')}
+          >
+            <Input disabled size="large" className="bg-muted/50" />
+          </Form.Item>
 
-      {/* Oil Dialog */}
-      <Dialog open={isOilDialogOpen} onOpenChange={setIsOilDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{t('editOilPrice')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t('fuelType')}</Label>
-              <Input value={oilForm.type} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('price')} (so'm)</Label>
-              <Input
-                type="number"
-                value={oilForm.price}
-                onChange={(e) => setOilForm({ ...oilForm, price: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOilDialogOpen(false)}>
-              {t('cancel')}
-            </Button>
-            <Button onClick={handleSaveOil}>{t('save')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <Form.Item
+            name="price"
+            label={`${t('price')} (so'm)`}
+            rules={[{ required: true, message: t('enterPrice') }]}
+          >
+            <Input type="number" placeholder="9500" size="large" suffix="so'm" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

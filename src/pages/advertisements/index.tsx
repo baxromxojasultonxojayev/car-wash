@@ -1,49 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
-  Search,
-  MoreHorizontal,
   Edit,
   Trash2,
   Megaphone,
-  Image,
+  Image as ImageIcon,
   Video,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Button, Card, Input, Select, Tag, Modal, Space, Typography, Form, Switch } from 'antd';
+import DataTable, { Column } from '@/components/Table/DataTable';
+
+const { Title, Text } = Typography;
 
 interface Advertisement {
   id: string;
@@ -85,28 +53,19 @@ const mockKiosks = [
 export default function AdvertisementsPage() {
   const { t } = useTranslation();
   const [ads, setAds] = useState<Advertisement[]>(mockAds);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    type: 'image' as 'image' | 'video',
-    kioskId: '',
-  });
-
-  const filteredAds = ads.filter((ad) =>
-    ad.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [form] = Form.useForm();
 
   const handleCreate = () => {
     setEditingAd(null);
-    setFormData({ title: '', type: 'image', kioskId: '' });
+    form.resetFields();
     setIsDialogOpen(true);
   };
 
   const handleEdit = (ad: Advertisement) => {
     setEditingAd(ad);
-    setFormData({
+    form.setFieldsValue({
       title: ad.title,
       type: ad.type,
       kioskId: ad.kioskIds[0] || '',
@@ -114,35 +73,41 @@ export default function AdvertisementsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
-    const kiosk = mockKiosks.find((k) => k.id === formData.kioskId);
-    if (editingAd) {
-      setAds(
-        ads.map((ad) =>
-          ad.id === editingAd.id
-            ? {
-                ...ad,
-                title: formData.title,
-                type: formData.type,
-                kioskIds: formData.kioskId ? [formData.kioskId] : [],
-                kioskNames: kiosk ? [kiosk.name] : [],
-              }
-            : ad
-        )
-      );
-    } else {
-      const newAd: Advertisement = {
-        id: Date.now().toString(),
-        title: formData.title,
-        type: formData.type,
-        kioskIds: formData.kioskId ? [formData.kioskId] : [],
-        kioskNames: kiosk ? [kiosk.name] : [],
-        isActive: true,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      setAds([...ads, newAd]);
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields();
+      const kiosk = mockKiosks.find((k) => k.id === values.kioskId);
+      
+      if (editingAd) {
+        setAds(
+          ads.map((ad) =>
+            ad.id === editingAd.id
+              ? {
+                  ...ad,
+                  title: values.title,
+                  type: values.type,
+                  kioskIds: values.kioskId ? [values.kioskId] : [],
+                  kioskNames: kiosk ? [kiosk.name] : [],
+                }
+              : ad
+          )
+        );
+      } else {
+        const newAd: Advertisement = {
+          id: Date.now().toString(),
+          title: values.title,
+          type: values.type,
+          kioskIds: values.kioskId ? [values.kioskId] : [],
+          kioskNames: kiosk ? [kiosk.name] : [],
+          isActive: true,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        setAds([...ads, newAd]);
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Validate Failed:', error);
     }
-    setIsDialogOpen(false);
   };
 
   const handleToggle = (id: string) => {
@@ -153,187 +118,220 @@ export default function AdvertisementsPage() {
     setAds(ads.filter((ad) => ad.id !== id));
   };
 
+  const columns: Column<Advertisement>[] = [
+    {
+      key: 'title',
+      header: t('title'),
+      searchable: true,
+      render: (val) => <Text strong>{val}</Text>
+    },
+    {
+      key: 'type',
+      header: t('type'),
+      render: (val: 'image' | 'video') => (
+        <Space size={8}>
+          {val === 'image' ? (
+            <ImageIcon size={16} className="text-blue-500" />
+          ) : (
+            <Video size={16} className="text-purple-500" />
+          )}
+          <Tag className="rounded-full border-none px-3">
+            {val === 'image' ? t('image') : t('video')}
+          </Tag>
+        </Space>
+      )
+    },
+    {
+      key: 'kiosks',
+      header: t('kiosks'),
+      hideOnMobile: true,
+      render: (_, row) => (
+        <Space size={[4, 4]} wrap>
+          {row.kioskNames.map((name, i) => (
+            <Tag key={i} className="rounded-full border-none px-3 bg-muted/50">
+              {name}
+            </Tag>
+          ))}
+        </Space>
+      )
+    },
+    {
+      key: 'status',
+      header: t('status'),
+      align: 'center',
+      render: (_, row) => (
+        <Switch 
+          checked={row.isActive} 
+          onChange={() => handleToggle(row.id)} 
+          size="small"
+        />
+      )
+    },
+    {
+      key: 'actions',
+      header: t('actions'),
+      align: 'right',
+      render: (_, row) => (
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<Edit size={16} />}
+            onClick={() => handleEdit(row)}
+            className="text-blue-500"
+          />
+          <Button
+            type="text"
+            icon={<Trash2 size={16} />}
+            onClick={() => handleDelete(row.id)}
+            className="text-red-500"
+          />
+        </Space>
+      )
+    }
+  ];
+
+  const renderMobileCard = (ad: Advertisement) => (
+    <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '16px' } }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="min-w-0 flex-1">
+          <Text strong className="block truncate text-base">{ad.title}</Text>
+          <Space size={4} className="mt-1">
+            {ad.type === 'image' ? <ImageIcon size={14} /> : <Video size={14} />}
+            <Text size="small" className="text-muted-foreground">{t(ad.type)}</Text>
+          </Space>
+        </div>
+        <Switch 
+          checked={ad.isActive} 
+          onChange={() => handleToggle(ad.id)} 
+          size="small"
+        />
+      </div>
+      <div className="flex flex-wrap gap-1 mb-4">
+        {ad.kioskNames.map((name, i) => (
+          <Tag key={i} className="text-[10px] rounded-full px-2 border-none bg-muted/30">
+            {name}
+          </Tag>
+        ))}
+      </div>
+      <div className="flex gap-2 pt-2 border-t border-border/10">
+        <Button className="flex-1" icon={<Edit size={16} />} onClick={() => handleEdit(ad)}>
+          {t('edit')}
+        </Button>
+        <Button danger className="flex-1" icon={<Trash2 size={16} />} onClick={() => handleDelete(ad.id)}>
+          {t('delete')}
+        </Button>
+      </div>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('advertisements')}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('manageAdvertisements')}</p>
+          <Title level={2} className="!mb-0 !text-foreground">{t('advertisements')}</Title>
+          <Text className="text-muted-foreground">{t('manageAdvertisements')}</Text>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus size={18} />
+        <Button 
+          type="primary" 
+          icon={<Plus size={18} />} 
+          onClick={handleCreate} 
+          size="large"
+          className="bg-blue-600 hover:bg-blue-700 h-11"
+        >
           {t('newAdvertisement')}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('total')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Megaphone className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">{ads.length}</span>
+        <Card bordered={false} className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('total')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Megaphone className="h-5 w-5 text-blue-500" />
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{ads.length}</span>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('active')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+        <Card bordered={false} className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('active')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/20 rounded-lg">
               <Megaphone className="h-5 w-5 text-green-500" />
-              <span className="text-2xl font-bold">{ads.filter((a) => a.isActive).length}</span>
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{ads.filter((a) => a.isActive).length}</span>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('videos')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+        <Card bordered={false} className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('videos')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
               <Video className="h-5 w-5 text-purple-500" />
-              <span className="text-2xl font-bold">{ads.filter((a) => a.type === 'video').length}</span>
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{ads.filter((a) => a.type === 'video').length}</span>
+          </div>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('searchAdvertisementPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('title')}</TableHead>
-                <TableHead>{t('type')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('kiosks')}</TableHead>
-                <TableHead className="text-center">{t('status')}</TableHead>
-                <TableHead className="text-right">{t('actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAds.map((ad) => (
-                <TableRow key={ad.id}>
-                  <TableCell className="font-medium">{ad.title}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {ad.type === 'image' ? (
-                        <Image className="h-4 w-4 text-blue-500" />
-                      ) : (
-                        <Video className="h-4 w-4 text-purple-500" />
-                      )}
-                      <Badge variant="outline">{ad.type === 'image' ? t('image') : t('video')}</Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {ad.kioskNames.map((name, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Switch checked={ad.isActive} onCheckedChange={() => handleToggle(ad.id)} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(ad)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          {t('edit')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(ad.id)} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {t('delete')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
+      <Card bordered={false} className="bg-card border border-border/20 shadow-sm overflow-hidden" styles={{ body: { padding: '16px' } }}>
+        <DataTable
+          data={ads}
+          columns={columns}
+          searchPlaceholder={t('searchAdvertisementPlaceholder')}
+          renderMobileCard={renderMobileCard}
+          getRowId={(a) => a.id}
+        />
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{editingAd ? t('editAdvertisement') : t('newAdvertisement')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t('title')}</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('type')}</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: 'image' | 'video') => setFormData({ ...formData, type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="image">{t('image')}</SelectItem>
-                  <SelectItem value="video">{t('video')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('kiosk')}</Label>
-              <Select
-                value={formData.kioskId}
-                onValueChange={(value) => setFormData({ ...formData, kioskId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectKiosk')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockKiosks.map((kiosk) => (
-                    <SelectItem key={kiosk.id} value={kiosk.id}>
-                      {kiosk.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {t('cancel')}
-            </Button>
-            <Button onClick={handleSave} disabled={!formData.title}>
-              {t('save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Modal
+        title={editingAd ? t('editAdvertisement') : t('newAdvertisement')}
+        open={isDialogOpen}
+        onCancel={() => setIsDialogOpen(false)}
+        onOk={handleSave}
+        destroyOnClose
+        width={500}
+        okButtonProps={{ size: 'large' }}
+        cancelButtonProps={{ size: 'large' }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          className="py-4"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="title"
+            label={t('title')}
+            rules={[{ required: true, message: t('enterTitle') }]}
+          >
+            <Input placeholder={t('enterTitle')} size="large" />
+          </Form.Item>
+
+          <Form.Item
+            name="type"
+            label={t('type')}
+            initialValue="image"
+          >
+            <Select size="large">
+              <Select.Option value="image">{t('image')}</Select.Option>
+              <Select.Option value="video">{t('video')}</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="kioskId"
+            label={t('kiosk')}
+            rules={[{ required: true, message: t('selectKiosk') }]}
+          >
+            <Select placeholder={t('selectKiosk')} size="large">
+              {mockKiosks.map((kiosk) => (
+                <Select.Option key={kiosk.id} value={kiosk.id}>
+                  {kiosk.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

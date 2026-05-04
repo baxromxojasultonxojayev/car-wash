@@ -295,5 +295,9 @@
   "platformSettings": "Настройки платформы",
   "dbMigrationExport": "Миграция и экспорт",
   "superAdmin": "Супер Админ",
-  "admin": "Админ"
+  "admin": "Админ",
+  "logoutConfirmTitle": "Подтвердите выход",
+  "logoutConfirmMessage": "Вы действительно хотите выйти из системы?",
+  "logoutConfirmYes": "ДА",
+  "logoutConfirmNo": "НЕТ"
 }

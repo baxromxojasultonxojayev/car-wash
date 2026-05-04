@@ -295,5 +295,9 @@
   "platformSettings": "Platforma sozlamalari",
   "dbMigrationExport": "Migratsiya va eksport",
   "superAdmin": "Super Admin",
-  "admin": "Admin"
+  "admin": "Admin",
+  "logoutConfirmTitle": "Chiqishni tasdiqlaysizmi?",
+  "logoutConfirmMessage": "Haqiqatan ham tizimdan chiqmoqchimisiz?",
+  "logoutConfirmYes": "XA",
+  "logoutConfirmNo": "YO'Q"
 }

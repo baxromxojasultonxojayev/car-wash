@@ -96,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       }, { skipAuth: true });
 
+
       // Tokenlarni saqlash
       const accessToken = response.access_token;
       const refreshToken = response.refresh_token;
@@ -147,9 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const refreshToken = getRefreshToken();
       // API logout endpoint'ini chaqirish, payload'da refresh_token yuboramiz
       if (refreshToken) {
-        await apiPost('/auth/logout', { refresh_token: refreshToken }).catch(() => {});
+        await apiPost('/auth/logout', { refresh_token: refreshToken }).catch(() => { });
       } else {
-        await apiPost('/auth/logout').catch(() => {});
+        await apiPost('/auth/logout').catch(() => { });
       }
     } finally {
       clearTokens();

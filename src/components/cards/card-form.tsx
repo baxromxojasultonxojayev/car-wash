@@ -1,10 +1,20 @@
 "use client"
 
-import type React from "react"
+import { useTranslation } from "react-i18next";
+import { 
+  Form, 
+  Input, 
+  InputNumber, 
+  Button, 
+  Select, 
+  Switch, 
+  Space, 
+  Typography, 
+  Card 
+} from "antd";
+import { CreditCard, Wallet, Building2, User, ShieldCheck } from "lucide-react";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+const { Text } = Typography;
 
 interface RFIDCardFormData {
   cardNumber: string
@@ -26,121 +36,115 @@ interface CardFormProps {
 }
 
 export default function CardForm({ card, onSubmit, onCancel }: CardFormProps) {
-  const [formData, setFormData] = useState<RFIDCardFormData>({
-    cardNumber: "",
-    balance: 0,
-    isActive: true,
-    companyId: "1",
-    ownerId: "",
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
 
-  useEffect(() => {
-    if (card) {
-      setFormData({
-        cardNumber: card.cardNumber,
-        balance: card.balance,
-        isActive: card.isActive,
-        companyId: card.companyId || "1",
-        ownerId: card.ownerId || "",
-      })
-    }
-  }, [card])
+  const initialValues = {
+    cardNumber: card?.cardNumber || "",
+    balance: card?.balance || 0,
+    isActive: card?.isActive ?? true,
+    companyId: card?.companyId || "1",
+    ownerId: card?.ownerId || "",
+  };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.cardNumber) {
-      newErrors.cardNumber = "Karta raqami talab qilinadi"
-    } else if (!/^[0-9A-Fa-f]{12}$/.test(formData.cardNumber)) {
-      newErrors.cardNumber = "Karta raqami 12 ta hexadecimal raqamdan iborat bo'lishi kerak"
-    }
-
-    if (formData.balance < 0) {
-      newErrors.balance = "Balans manfiy bo'lishi mumkin emas"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (validateForm()) {
-      onSubmit(formData)
-    }
-  }
+  const handleFinish = (values: any) => {
+    onSubmit(values);
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Karta Raqami</label>
-        <Input
-          value={formData.cardNumber}
-          onChange={(e) => setFormData({ ...formData, cardNumber: e.target.value.toUpperCase() })}
-          className="bg-input text-foreground border-border/30 font-mono"
-          placeholder="1234567890AB"
-          maxLength={12}
+    <Form
+      form={form}
+      layout="vertical"
+      initialValues={initialValues}
+      onFinish={handleFinish}
+      requiredMark={false}
+      className="space-y-4"
+    >
+      <Form.Item
+        name="cardNumber"
+        label={<Space size={4}><CreditCard size={14} className="text-blue-500" />{t("cardNumber") || "Karta Raqami"}</Space>}
+        rules={[
+          { required: true, message: t("cardNumberRequired") || "Karta raqami talab qilinadi" },
+          { pattern: /^[0-9A-Fa-f]{12}$/, message: t("cardNumberInvalid") || "Karta raqami 12 ta hexadecimal raqamdan iborat bo'lishi kerak" }
+        ]}
+      >
+        <Input 
+          size="large" 
+          placeholder="1234567890AB" 
+          maxLength={12} 
+          className="font-mono uppercase"
+          onChange={(e) => form.setFieldsValue({ cardNumber: e.target.value.toUpperCase() })}
         />
-        {errors.cardNumber && <p className="text-red-500 text-xs mt-1">{errors.cardNumber}</p>}
-        <p className="text-xs text-muted-foreground mt-1">12 ta hexadecimal raqam</p>
-      </div>
+      </Form.Item>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Balans (so'mda)</label>
-        <Input
-          type="number"
-          value={formData.balance}
-          onChange={(e) => setFormData({ ...formData, balance: Number.parseInt(e.target.value) || 0 })}
-          className="bg-input text-foreground border-border/30"
-          placeholder="0"
-          min="0"
+      <Form.Item
+        name="balance"
+        label={<Space size={4}><Wallet size={14} className="text-emerald-500" />{t("balance") || "Balans (so'mda)"}</Space>}
+        rules={[{ required: true, message: t("balanceRequired") || "Balans talab qilinadi" }]}
+      >
+        <InputNumber 
+          size="large" 
+          className="w-full" 
+          min={0} 
+          placeholder="0" 
+          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
+          parser={(value) => value!.replace(/\s?|so'm/g, '')}
         />
-        {errors.balance && <p className="text-red-500 text-xs mt-1">{errors.balance}</p>}
-      </div>
+      </Form.Item>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Kompaniya</label>
-        <select
-          value={formData.companyId}
-          onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-          className="w-full px-3 py-2 bg-input text-foreground border border-border/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <Form.Item
+        name="companyId"
+        label={<Space size={4}><Building2 size={14} className="text-amber-500" />{t("company") || "Kompaniya"}</Space>}
+      >
+        <Select size="large">
+          <Select.Option value="1">CarWash Premium</Select.Option>
+          <Select.Option value="2">Quick Clean</Select.Option>
+        </Select>
+      </Form.Item>
+
+      <Form.Item
+        name="ownerId"
+        label={<Space size={4}><User size={14} className="text-violet-500" />{t("owner") || "Foydalanuvchi (ixtiyoriy)"}</Space>}
+      >
+        <Input size="large" placeholder={t("enterOwnerId") || "Foydalanuvchi ID"} />
+      </Form.Item>
+
+      <Form.Item
+        name="isActive"
+        valuePropName="checked"
+      >
+        <Card bordered={false} className="bg-card border border-border/20" styles={{ body: { padding: '12px 16px' } }}>
+          <div className="flex items-center justify-between">
+            <Space>
+              <div className={`p-2 rounded-lg ${form.getFieldValue("isActive") ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'}`}>
+                <ShieldCheck size={18} />
+              </div>
+              <Text strong>{t("active") || "Faol"}</Text>
+            </Space>
+            <Switch />
+          </div>
+        </Card>
+      </Form.Item>
+
+      <div className="flex gap-4 pt-6">
+        <Button 
+          type="primary" 
+          htmlType="submit" 
+          block 
+          size="large"
+          className="h-12 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20"
         >
-          <option value="1">CarWash Premium</option>
-          <option value="2">Quick Clean</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Foydalanuvchi (ixtiyoriy)</label>
-        <Input
-          value={formData.ownerId}
-          onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
-          className="bg-input text-foreground border-border/30"
-          placeholder="Foydalanuvchi ID"
-        />
-      </div>
-
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={formData.isActive}
-            onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-            className="w-4 h-4 rounded border-border/30 bg-input"
-          />
-          <span className="text-sm font-medium text-foreground">Faol</span>
-        </label>
-      </div>
-
-      <div className="flex gap-3 pt-4 border-t border-border/20">
-        <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-          Saqlash
+          {t("save") || "Saqlash"}
         </Button>
-        <Button type="button" onClick={onCancel} className="flex-1 bg-sidebar hover:bg-sidebar/80 text-foreground">
-          Bekor qilish
+        <Button 
+          onClick={onCancel} 
+          block 
+          size="large"
+          className="h-12 border-border/30"
+        >
+          {t("cancel") || "Bekor qilish"}
         </Button>
       </div>
-    </form>
+    </Form>
   )
 }

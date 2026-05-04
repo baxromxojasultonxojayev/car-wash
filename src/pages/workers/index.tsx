@@ -1,48 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
-  Search,
-  MoreHorizontal,
   Edit,
   Trash2,
   UserCheck,
   Briefcase,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Button, Card, Input, Select, Tag, Modal, Space, Typography, Form, Switch } from 'antd';
+import DataTable, { Column } from '@/components/Table/DataTable';
+
+const { Title, Text } = Typography;
 
 interface Worker {
   id: string;
@@ -99,31 +67,19 @@ const positions = ['Operator', 'Yuvuvchi', 'Kassir', 'Menejer', 'Texnik'];
 export default function WorkersPage() {
   const { t } = useTranslation();
   const [workers, setWorkers] = useState<Worker[]>(mockWorkers);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    position: '',
-    kioskId: '',
-    phone: '',
-  });
-
-  const filteredWorkers = workers.filter(
-    (w) =>
-      w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      w.position.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [form] = Form.useForm();
 
   const handleCreate = () => {
     setEditingWorker(null);
-    setFormData({ name: '', position: '', kioskId: '', phone: '' });
+    form.resetFields();
     setIsDialogOpen(true);
   };
 
   const handleEdit = (worker: Worker) => {
     setEditingWorker(worker);
-    setFormData({
+    form.setFieldsValue({
       name: worker.name,
       position: worker.position,
       kioskId: worker.kioskId,
@@ -132,37 +88,43 @@ export default function WorkersPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
-    const kiosk = mockKiosks.find((k) => k.id === formData.kioskId);
-    if (editingWorker) {
-      setWorkers(
-        workers.map((w) =>
-          w.id === editingWorker.id
-            ? {
-                ...w,
-                name: formData.name,
-                position: formData.position,
-                kioskId: formData.kioskId,
-                kioskName: kiosk?.name || '',
-                phone: formData.phone,
-              }
-            : w
-        )
-      );
-    } else {
-      const newWorker: Worker = {
-        id: Date.now().toString(),
-        name: formData.name,
-        position: formData.position,
-        kioskId: formData.kioskId,
-        kioskName: kiosk?.name || '',
-        phone: formData.phone,
-        isActive: true,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      setWorkers([...workers, newWorker]);
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields();
+      const kiosk = mockKiosks.find((k) => k.id === values.kioskId);
+      
+      if (editingWorker) {
+        setWorkers(
+          workers.map((w) =>
+            w.id === editingWorker.id
+              ? {
+                  ...w,
+                  name: values.name,
+                  position: values.position,
+                  kioskId: values.kioskId,
+                  kioskName: kiosk?.name || '',
+                  phone: values.phone,
+                }
+              : w
+          )
+        );
+      } else {
+        const newWorker: Worker = {
+          id: Date.now().toString(),
+          name: values.name,
+          position: values.position,
+          kioskId: values.kioskId,
+          kioskName: kiosk?.name || '',
+          phone: values.phone,
+          isActive: true,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        setWorkers([...workers, newWorker]);
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Validate Failed:', error);
     }
-    setIsDialogOpen(false);
   };
 
   const handleToggle = (id: string) => {
@@ -173,190 +135,211 @@ export default function WorkersPage() {
     setWorkers(workers.filter((w) => w.id !== id));
   };
 
+  const columns: Column<Worker>[] = [
+    {
+      key: 'name',
+      header: t('name'),
+      searchable: true,
+      render: (val) => <Text strong>{val}</Text>
+    },
+    {
+      key: 'position',
+      header: t('position'),
+      render: (val) => <Tag className="rounded-full border-none px-3">{val}</Tag>
+    },
+    {
+      key: 'kioskName',
+      header: t('kiosk'),
+      hideOnMobile: true,
+      render: (val) => <Text className="text-muted-foreground">{val}</Text>
+    },
+    {
+      key: 'phone',
+      header: t('phone'),
+      hideOnMobile: true,
+      render: (val) => <Text className="text-muted-foreground">{val}</Text>
+    },
+    {
+      key: 'status',
+      header: t('status'),
+      align: 'center',
+      render: (_, row) => (
+        <Switch 
+          checked={row.isActive} 
+          onChange={() => handleToggle(row.id)} 
+          size="small"
+        />
+      )
+    },
+    {
+      key: 'actions',
+      header: t('actions'),
+      align: 'right',
+      render: (_, row) => (
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<Edit size={16} />}
+            onClick={() => handleEdit(row)}
+            className="text-blue-500"
+          />
+          <Button
+            type="text"
+            icon={<Trash2 size={16} />}
+            onClick={() => handleDelete(row.id)}
+            className="text-red-500"
+          />
+        </Space>
+      )
+    }
+  ];
+
+  const renderMobileCard = (worker: Worker) => (
+    <Card bordered={false} className="bg-card border border-border/20 shadow-sm" styles={{ body: { padding: '16px' } }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="min-w-0 flex-1">
+          <Text strong className="block truncate text-base">{worker.name}</Text>
+          <Text size="small" className="text-muted-foreground block truncate">{worker.position} • {worker.kioskName}</Text>
+        </div>
+        <Switch 
+          checked={worker.isActive} 
+          onChange={() => handleToggle(worker.id)} 
+          size="small"
+        />
+      </div>
+      <div className="flex justify-between items-center mb-4">
+        <Text className="text-xs text-muted-foreground">{worker.phone}</Text>
+      </div>
+      <div className="flex gap-2 pt-2 border-t border-border/10">
+        <Button className="flex-1" icon={<Edit size={16} />} onClick={() => handleEdit(worker)}>
+          {t('edit')}
+        </Button>
+        <Button danger className="flex-1" icon={<Trash2 size={16} />} onClick={() => handleDelete(worker.id)}>
+          {t('delete')}
+        </Button>
+      </div>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('workers')}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('manageWorkers')}</p>
+          <Title level={2} className="!mb-0 !text-foreground">{t('workers')}</Title>
+          <Text className="text-muted-foreground">{t('manageWorkers')}</Text>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus size={18} />
+        <Button 
+          type="primary" 
+          icon={<Plus size={18} />} 
+          onClick={handleCreate} 
+          size="large"
+          className="bg-blue-600 hover:bg-blue-700 h-11"
+        >
           {t('newWorker')}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('total')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">{workers.length}</span>
+        <Card bordered={false} className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('total')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <UserCheck className="h-5 w-5 text-blue-500" />
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{workers.length}</span>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('active')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
+        <Card bordered={false} className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('active')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/20 rounded-lg">
               <UserCheck className="h-5 w-5 text-green-500" />
-              <span className="text-2xl font-bold">{workers.filter((w) => w.isActive).length}</span>
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{workers.filter((w) => w.isActive).length}</span>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('positions')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-blue-500" />
-              <span className="text-2xl font-bold">{new Set(workers.map((w) => w.position)).size}</span>
+        <Card bordered={false} className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20" styles={{ body: { padding: '20px' } }}>
+          <Text className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{t('positions')}</Text>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <Briefcase className="h-5 w-5 text-purple-500" />
             </div>
-          </CardContent>
+            <span className="text-2xl font-bold">{new Set(workers.map((w) => w.position)).size}</span>
+          </div>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('searchWorkerPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('name')}</TableHead>
-                <TableHead>{t('position')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('kiosk')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('phone')}</TableHead>
-                <TableHead className="text-center">{t('status')}</TableHead>
-                <TableHead className="text-right">{t('actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredWorkers.map((worker) => (
-                <TableRow key={worker.id}>
-                  <TableCell className="font-medium">{worker.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{worker.position}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {worker.kioskName}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {worker.phone}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Switch checked={worker.isActive} onCheckedChange={() => handleToggle(worker.id)} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(worker)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          {t('edit')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(worker.id)} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {t('delete')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
+      <Card bordered={false} className="bg-card border border-border/20 shadow-sm overflow-hidden" styles={{ body: { padding: '16px' } }}>
+        <DataTable
+          data={workers}
+          columns={columns}
+          searchPlaceholder={t('searchWorkerPlaceholder')}
+          renderMobileCard={renderMobileCard}
+          getRowId={(w) => w.id}
+        />
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{editingWorker ? t('editWorker') : t('newWorker')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t('name')}</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={t('workerNamePlaceholder')}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('position')}</Label>
-              <Select
-                value={formData.position}
-                onValueChange={(value) => setFormData({ ...formData, position: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectPosition')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {positions.map((pos) => (
-                    <SelectItem key={pos} value={pos}>
-                      {pos}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('kiosk')}</Label>
-              <Select
-                value={formData.kioskId}
-                onValueChange={(value) => setFormData({ ...formData, kioskId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectKiosk')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockKiosks.map((kiosk) => (
-                    <SelectItem key={kiosk.id} value={kiosk.id}>
-                      {kiosk.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('phone')}</Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+998 90 123 45 67"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {t('cancel')}
-            </Button>
-            <Button onClick={handleSave} disabled={!formData.name}>
-              {t('save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Modal
+        title={editingWorker ? t('editWorker') : t('newWorker')}
+        open={isDialogOpen}
+        onCancel={() => setIsDialogOpen(false)}
+        onOk={handleSave}
+        destroyOnClose
+        width={500}
+        okButtonProps={{ size: 'large' }}
+        cancelButtonProps={{ size: 'large' }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          className="py-4"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="name"
+            label={t('name')}
+            rules={[{ required: true, message: t('workerNamePlaceholder') }]}
+          >
+            <Input placeholder={t('workerNamePlaceholder')} size="large" />
+          </Form.Item>
+
+          <Form.Item
+            name="position"
+            label={t('position')}
+            rules={[{ required: true, message: t('selectPosition') }]}
+          >
+            <Select placeholder={t('selectPosition')} size="large">
+              {positions.map((pos) => (
+                <Select.Option key={pos} value={pos}>
+                  {pos}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="kioskId"
+            label={t('kiosk')}
+            rules={[{ required: true, message: t('selectKiosk') }]}
+          >
+            <Select placeholder={t('selectKiosk')} size="large">
+              {mockKiosks.map((kiosk) => (
+                <Select.Option key={kiosk.id} value={kiosk.id}>
+                  {kiosk.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="phone"
+            label={t('phone')}
+            rules={[{ required: true, message: t('phone') }]}
+          >
+            <Input placeholder="+998 90 123 45 67" size="large" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

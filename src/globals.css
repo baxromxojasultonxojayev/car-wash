@@ -46,9 +46,9 @@
 .dark {
   --background: #0f172a;
   --foreground: #e2e8f0;
-  --card: #1e293b;
+  --card: #0f172a;
   --card-foreground: #e2e8f0;
-  --popover: #1e293b;
+  --popover: #0f172a;
   --popover-foreground: #e2e8f0;
   --primary: #3b82f6;
   --primary-foreground: #0f172a;
@@ -63,13 +63,13 @@
   --border: #334155;
   --input: #1e293b;
   --ring: #3b82f6;
-  --sidebar: #192235;
+  --sidebar: #0f172a;
   --sidebar-foreground: #e2e8f0;
   --sidebar-primary: #3b82f6;
   --sidebar-primary-foreground: #e2e8f0;
-  --sidebar-accent: #334155;
+  --sidebar-accent: #192235;
   --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: #334155;
+  --sidebar-border: #192235;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -80,13 +80,13 @@
 
 /* Sidebar Dark Override (When main theme is light) */
 .sidebar-dark {
-  --sidebar: #111827;
+  --sidebar: #0f172a;
   --sidebar-foreground: #f9fafb;
   --sidebar-primary: #3b82f6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1f2937;
+  --sidebar-accent: #192235;
   --sidebar-accent-foreground: #f9fafb;
-  --sidebar-border: #1f2937;
+  --sidebar-border: #192235;
   --sidebar-ring: #3b82f6;
 }
 

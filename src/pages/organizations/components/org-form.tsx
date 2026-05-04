@@ -1,8 +1,21 @@
-import type React from "react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { 
+  Form, 
+  Input, 
+  InputNumber, 
+  DatePicker, 
+  Select, 
+  Switch, 
+  Button, 
+  Row, 
+  Col, 
+  Typography, 
+  Divider, 
+  Space, 
+  TimePicker,
+  Card,
+  Tooltip
+} from "antd";
 import {
     Building2,
     FileText,
@@ -10,12 +23,14 @@ import {
     Percent,
     Calendar,
     MapPin,
-    AlertCircle,
     Plus,
     Trash2,
     Clock,
 } from "lucide-react";
 import type { OrgFormData, OrgFormProps, Branch, Schedule } from "../type";
+import dayjs from "dayjs";
+
+const { Title, Text } = Typography;
 
 const WEEKDAYS = [
     { key: 1, uz: "Dushanba", ru: "Понедельник", en: "Monday" },
@@ -48,430 +63,326 @@ const DEFAULT_BRANCH: Branch = {
 export default function OrgForm({ organization, onSubmit, onCancel, loading }: OrgFormProps) {
     const { t, i18n } = useTranslation();
     const lang = i18n.language as "uz" | "ru" | "en";
+    const [form] = Form.useForm();
 
-    const [formData, setFormData] = useState<OrgFormData>({
+    const initialValues = {
         display_name: organization?.display_name || "",
         legal_name: organization?.legal_name || "",
         tax_id: organization?.tax_id || "",
         default_take_rate: organization?.default_take_rate ?? 1,
-        status: organization?.status || "active",
-        starts_at: organization?.starts_at
-            ? organization.starts_at.slice(0, 16)
-            : new Date().toISOString().slice(0, 16),
-        expires_at: organization?.expires_at
-            ? organization.expires_at.slice(0, 16)
-            : "",
+        status: organization?.status === "active",
+        starts_at: organization?.starts_at ? dayjs(organization.starts_at) : dayjs(),
+        expires_at: organization?.expires_at ? dayjs(organization.expires_at) : null,
         branches: organization?.branches?.length
             ? organization.branches.map((b) => ({
                 ...b,
-                schedule: b.schedule?.length === 7 ? b.schedule : createDefaultSchedule(),
-            }))
-            : [{ ...DEFAULT_BRANCH, schedule: createDefaultSchedule() }],
-    });
-
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [touched, setTouched] = useState<Record<string, boolean>>({});
-
-    const validateForm = () => {
-        const newErrors: Record<string, string> = {};
-        if (!formData.display_name.trim()) newErrors.display_name = t("userNameRequired");
-        if (!formData.legal_name.trim()) newErrors.legal_name = t("userNameRequired");
-        if (!formData.tax_id.trim()) newErrors.tax_id = t("userNameRequired");
-        setErrors(newErrors);
-        setTouched({ display_name: true, legal_name: true, tax_id: true });
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleBlur = (field: string) => {
-        setTouched((prev) => ({ ...prev, [field]: true }));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (validateForm()) {
-            const payload: OrgFormData = {
-                ...formData,
-                starts_at: formData.starts_at
-                    ? new Date(formData.starts_at).toISOString()
-                    : new Date().toISOString(),
-                expires_at: formData.expires_at
-                    ? new Date(formData.expires_at).toISOString()
-                    : new Date().toISOString(),
-                branches: formData.branches.map((b) => ({
-                    ...b,
-                    schedule: b.schedule.map((s) => ({
-                        ...s,
-                        opens_at: s.is_closed ? null : s.opens_at,
-                        closes_at: s.is_closed ? null : s.closes_at,
-                    })),
+                schedule: b.schedule?.length === 7 ? b.schedule.map(s => ({
+                  ...s,
+                  timeRange: s.is_closed ? null : [dayjs(s.opens_at, "HH:mm:ss"), dayjs(s.closes_at, "HH:mm:ss")]
+                })) : createDefaultSchedule().map(s => ({
+                  ...s,
+                  timeRange: [dayjs(s.opens_at, "HH:mm:ss"), dayjs(s.closes_at, "HH:mm:ss")]
                 })),
-            };
-            await onSubmit(payload);
-        }
+            }))
+            : [{ ...DEFAULT_BRANCH, schedule: createDefaultSchedule().map(s => ({
+                ...s,
+                timeRange: [dayjs(s.opens_at, "HH:mm:ss"), dayjs(s.closes_at, "HH:mm:ss")]
+              })) }],
     };
 
-    const hasError = (field: string) => touched[field] && errors[field];
-
-    const updateBranch = (index: number, updates: Partial<Branch>) => {
-        const newBranches = [...formData.branches];
-        newBranches[index] = { ...newBranches[index], ...updates };
-        setFormData({ ...formData, branches: newBranches });
+    const handleSubmit = async (values: any) => {
+        const payload: OrgFormData = {
+            ...values,
+            status: values.status ? "active" : "inactive",
+            starts_at: values.starts_at.toISOString(),
+            expires_at: values.expires_at ? values.expires_at.toISOString() : null,
+            branches: values.branches.map((b: any) => ({
+                ...b,
+                schedule: b.schedule.map((s: any) => ({
+                    weekday: s.weekday,
+                    is_closed: s.is_closed,
+                    opens_at: s.is_closed || !s.timeRange ? null : s.timeRange[0].format("HH:mm:ss"),
+                    closes_at: s.is_closed || !s.timeRange ? null : s.timeRange[1].format("HH:mm:ss"),
+                })),
+            })),
+        };
+        await onSubmit(payload);
     };
 
-    const updateSchedule = (branchIdx: number, dayIdx: number, updates: Partial<Schedule>) => {
-        const newBranches = [...formData.branches];
-        const newSchedule = [...newBranches[branchIdx].schedule];
-        newSchedule[dayIdx] = { ...newSchedule[dayIdx], ...updates };
-        newBranches[branchIdx] = { ...newBranches[branchIdx], schedule: newSchedule };
-        setFormData({ ...formData, branches: newBranches });
-    };
-
-    const addBranch = () => {
-        setFormData({
-            ...formData,
-            branches: [...formData.branches, { ...DEFAULT_BRANCH, schedule: createDefaultSchedule() }],
-        });
-    };
-
-    const removeBranch = (index: number) => {
-        if (formData.branches.length <= 1) return;
-        setFormData({
-            ...formData,
-            branches: formData.branches.filter((_, i) => i !== index),
-        });
-    };
-
-    const getDayName = (day: typeof WEEKDAYS[0]) => {
-        return lang === "ru" ? day.ru : lang === "uz" ? day.uz : day.en;
+    const getDayName = (dayKey: number) => {
+        const day = WEEKDAYS.find(w => w.key === dayKey);
+        return lang === "ru" ? day?.ru : lang === "uz" ? day?.uz : day?.en;
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <Building2 size={14} className="text-blue-500" />
-                        {t("organizationName")}
-                    </label>
-                    <Input
-                        value={formData.display_name}
-                        onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                        onBlur={() => handleBlur("display_name")}
-                        className={`bg-background/50 text-foreground transition-all duration-200 ${hasError("display_name")
-                                ? "border-red-500/70 focus:border-red-500"
-                                : "border-border/40 focus:border-blue-500"
-                            }`}
-                        placeholder={t("enterOrgName")}
-                    />
-                    {hasError("display_name") && (
-                        <p className="flex items-center gap-1 text-red-500 text-xs mt-1">
-                            <AlertCircle size={12} />
-                            {errors.display_name}
-                        </p>
-                    )}
-                </div>
+        <Form
+            form={form}
+            layout="vertical"
+            initialValues={initialValues}
+            onFinish={handleSubmit}
+            className="space-y-4"
+            requiredMark={false}
+        >
+            <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                    <Form.Item
+                        name="display_name"
+                        label={<Space size={4}><Building2 size={14} className="text-blue-500" />{t("organizationName")}</Space>}
+                        rules={[{ required: true, message: t("userNameRequired") }]}
+                    >
+                        <Input size="large" placeholder={t("enterOrgName")} />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                    <Form.Item
+                        name="legal_name"
+                        label={<Space size={4}><FileText size={14} className="text-emerald-500" />{t("legalName") || "Legal Name"}</Space>}
+                        rules={[{ required: true, message: t("userNameRequired") }]}
+                    >
+                        <Input size="large" placeholder="OOO Example" />
+                    </Form.Item>
+                </Col>
+            </Row>
 
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <FileText size={14} className="text-emerald-500" />
-                        {t("legalName") || "Legal Name"}
-                    </label>
-                    <Input
-                        value={formData.legal_name}
-                        onChange={(e) => setFormData({ ...formData, legal_name: e.target.value })}
-                        onBlur={() => handleBlur("legal_name")}
-                        className={`bg-background/50 text-foreground transition-all duration-200 ${hasError("legal_name")
-                                ? "border-red-500/70 focus:border-red-500"
-                                : "border-border/40 focus:border-blue-500"
-                            }`}
-                        placeholder="OOO Example"
-                    />
-                    {hasError("legal_name") && (
-                        <p className="flex items-center gap-1 text-red-500 text-xs mt-1">
-                            <AlertCircle size={12} />
-                            {errors.legal_name}
-                        </p>
-                    )}
-                </div>
-            </div>
+            <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                    <Form.Item
+                        name="tax_id"
+                        label={<Space size={4}><Hash size={14} className="text-violet-500" />Tax ID (INN)</Space>}
+                        rules={[{ required: true, message: t("userNameRequired") }]}
+                    >
+                        <Input size="large" placeholder="123456789" />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                    <Form.Item
+                        name="default_take_rate"
+                        label={<Space size={4}><Percent size={14} className="text-amber-500" />{t("defaultTakeRate") || "Take Rate (%)"}</Space>}
+                    >
+                        <InputNumber size="large" className="w-full" min={0} max={100} />
+                    </Form.Item>
+                </Col>
+            </Row>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <Hash size={14} className="text-violet-500" />
-                        Tax ID (INN)
-                    </label>
-                    <Input
-                        value={formData.tax_id}
-                        onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
-                        onBlur={() => handleBlur("tax_id")}
-                        className={`bg-background/50 text-foreground transition-all duration-200 ${hasError("tax_id")
-                                ? "border-red-500/70 focus:border-red-500"
-                                : "border-border/40 focus:border-blue-500"
-                            }`}
-                        placeholder="123456789"
-                    />
-                    {hasError("tax_id") && (
-                        <p className="flex items-center gap-1 text-red-500 text-xs mt-1">
-                            <AlertCircle size={12} />
-                            {errors.tax_id}
-                        </p>
-                    )}
-                </div>
+            <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                    <Form.Item
+                        name="starts_at"
+                        label={<Space size={4}><Calendar size={14} className="text-cyan-500" />{t("startDate")}</Space>}
+                        rules={[{ required: true }]}
+                    >
+                        <DatePicker showTime size="large" className="w-full" />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                    <Form.Item
+                        name="expires_at"
+                        label={<Space size={4}><Calendar size={14} className="text-rose-500" />{t("endDate")}</Space>}
+                    >
+                        <DatePicker showTime size="large" className="w-full" />
+                    </Form.Item>
+                </Col>
+            </Row>
 
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <Percent size={14} className="text-amber-500" />
-                        {t("defaultTakeRate") || "Take Rate (%)"}
-                    </label>
-                    <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={formData.default_take_rate}
-                        onChange={(e) => setFormData({ ...formData, default_take_rate: Number(e.target.value) })}
-                        className="bg-background/50 text-foreground border-border/40 focus:border-blue-500 transition-all duration-200"
-                        placeholder="1"
-                    />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <Calendar size={14} className="text-cyan-500" />
-                        {t("startDate")}
-                    </label>
-                    <Input
-                        type="datetime-local"
-                        value={formData.starts_at}
-                        onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
-                        className="bg-background/50 text-foreground border-border/40 focus:border-blue-500 transition-all duration-200"
-                    />
-                </div>
-
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <Calendar size={14} className="text-rose-500" />
-                        {t("endDate")}
-                    </label>
-                    <Input
-                        type="datetime-local"
-                        value={formData.expires_at}
-                        onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
-                        className="bg-background/50 text-foreground border-border/40 focus:border-blue-500 transition-all duration-200"
-                    />
-                </div>
-            </div>
-
-            <div
-                onClick={() =>
-                    setFormData({
-                        ...formData,
-                        status: formData.status === "active" ? "inactive" : "active",
-                    })
-                }
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 border ${formData.status === "active"
-                        ? "bg-emerald-500/10 border-emerald-500/30"
-                        : "bg-orange-500/10 border-orange-500/30"
-                    }`}
+            <Form.Item
+                name="status"
+                valuePropName="checked"
+                className="mb-0"
             >
-                <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ${formData.status === "active"
-                        ? "bg-emerald-500/20 text-emerald-500"
-                        : "bg-orange-500/20 text-orange-500"
-                    }`}>
-                    <Building2 size={18} />
-                </div>
-                <div className="flex-1">
-                    <span className="text-sm font-medium text-foreground">
-                        {t("status")}: {formData.status === "active" ? t("active") : t("inactive")}
-                    </span>
-                </div>
-                <div className="relative">
-                    <div className={`w-10 h-[22px] rounded-full transition-all duration-300 ${formData.status === "active" ? "bg-emerald-500" : "bg-border/60"
-                        }`}>
-                        <div className={`absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${formData.status === "active" ? "left-[22px]" : "left-[3px]"
-                            }`} />
+                <Card bordered={false} className="bg-card border border-border/20" styles={{ body: { padding: '12px 16px' } }}>
+                    <div className="flex items-center justify-between">
+                        <Space>
+                          <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
+                            <Building2 size={18} />
+                          </div>
+                          <Text strong>{t("status")}</Text>
+                        </Space>
+                        <Space>
+                          <Text type="secondary">{form.getFieldValue("status") ? t("active") : t("inactive")}</Text>
+                          <Switch />
+                        </Space>
                     </div>
-                </div>
-            </div>
+                </Card>
+            </Form.Item>
 
-            <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                        <MapPin size={14} className="text-pink-500" />
-                        {t("branches") || "Branches"}
-                    </label>
-                    <button
-                        type="button"
-                        onClick={addBranch}
-                        className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-400 transition-colors"
-                    >
-                        <Plus size={14} />
-                        {t("add")}
-                    </button>
-                </div>
+            <Divider orientation="left" className="!my-6">
+                <Space size={4}>
+                    <MapPin size={16} className="text-pink-500" />
+                    {t("branches") || "Branches"}
+                </Space>
+            </Divider>
 
-                {formData.branches.map((branch, bIdx) => (
-                    <div
-                        key={bIdx}
-                        className="p-4 rounded-xl border border-border/30 bg-background/30 space-y-4"
-                    >
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                {t("branches") || "Branch"} #{bIdx + 1}
-                            </span>
-                            {formData.branches.length > 1 && (
-                                <button
-                                    type="button"
-                                    onClick={() => removeBranch(bIdx)}
-                                    className="p-1 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                >
-                                    <Trash2 size={14} />
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <Input
-                                value={branch.name}
-                                onChange={(e) => updateBranch(bIdx, { name: e.target.value })}
-                                className="bg-background/50 text-foreground border-border/40 text-sm"
-                                placeholder={t("name")}
-                            />
-                            <Input
-                                value={branch.address}
-                                onChange={(e) => updateBranch(bIdx, { address: e.target.value })}
-                                className="bg-background/50 text-foreground border-border/40 text-sm"
-                                placeholder={t("address") || "Address"}
-                            />
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                            <select
-                                value={branch.type}
-                                onChange={(e) => updateBranch(bIdx, { type: e.target.value })}
-                                className="bg-background/50 text-foreground border border-border/40 rounded-md px-3 py-2 text-sm focus:border-blue-500 outline-none transition-all"
+            <Form.List name="branches">
+                {(fields, { add, remove }) => (
+                    <div className="space-y-6">
+                        {fields.map(({ key, name, ...restField }) => (
+                            <Card 
+                                key={key} 
+                                bordered={false} 
+                                className="bg-card border border-border/20 shadow-sm overflow-hidden"
+                                styles={{ body: { padding: '20px' } }}
+                                title={
+                                    <Space>
+                                        <Text strong className="uppercase tracking-wider text-xs">{t("branches") || "Branch"} #{name + 1}</Text>
+                                    </Space>
+                                }
+                                extra={
+                                    fields.length > 1 && (
+                                        <Button 
+                                            type="text" 
+                                            danger 
+                                            icon={<Trash2 size={16} />} 
+                                            onClick={() => remove(name)} 
+                                        />
+                                    )
+                                }
                             >
-                                <option value="car_wash">Car Wash</option>
-                                <option value="gas_station">Gas Station</option>
-                                <option value="auto_service">Auto Service</option>
-                            </select>
-                            <Input
-                                type="number"
-                                step="any"
-                                value={branch.lat || ""}
-                                onChange={(e) => updateBranch(bIdx, { lat: Number(e.target.value) })}
-                                className="bg-background/50 text-foreground border-border/40 text-sm"
-                                placeholder="Lat"
-                            />
-                            <Input
-                                type="number"
-                                step="any"
-                                value={branch.lon || ""}
-                                onChange={(e) => updateBranch(bIdx, { lon: Number(e.target.value) })}
-                                className="bg-background/50 text-foreground border-border/40 text-sm"
-                                placeholder="Lon"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                <Clock size={12} />
-                                {t("schedule") || "Schedule"}
-                            </label>
-                            <div className="rounded-lg border border-border/20 overflow-hidden">
-                                {branch.schedule.map((day, dIdx) => {
-                                    const weekday = WEEKDAYS.find((w) => w.key === day.weekday) || WEEKDAYS[dIdx];
-                                    return (
-                                        <div
-                                            key={day.weekday}
-                                            className={`flex items-center gap-3 px-3 py-2 text-sm ${dIdx < 6 ? "border-b border-border/10" : ""
-                                                } ${day.is_closed ? "opacity-60" : ""}`}
+                                <Row gutter={12}>
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item
+                                            {...restField}
+                                            name={[name, 'name']}
+                                            rules={[{ required: true, message: t("name") }]}
                                         >
-                                            <span className="w-24 text-xs font-medium text-foreground shrink-0">
-                                                {getDayName(weekday)}
-                                            </span>
+                                            <Input placeholder={t("name")} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item
+                                            {...restField}
+                                            name={[name, 'address']}
+                                            rules={[{ required: true, message: t("address") }]}
+                                        >
+                                            <Input placeholder={t("address")} />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
 
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    updateSchedule(bIdx, dIdx, {
-                                                        is_closed: !day.is_closed,
-                                                        opens_at: !day.is_closed ? null : "09:00:00",
-                                                        closes_at: !day.is_closed ? null : "21:00:00",
-                                                    })
-                                                }
-                                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all shrink-0 ${day.is_closed
-                                                        ? "bg-red-500/10 text-red-500"
-                                                        : "bg-emerald-500/10 text-emerald-500"
-                                                    }`}
-                                            >
-                                                {day.is_closed ? t("closed") || "Closed" : t("open") || "Open"}
-                                            </button>
+                                <Row gutter={12}>
+                                    <Col xs={24} sm={8}>
+                                        <Form.Item
+                                            {...restField}
+                                            name={[name, 'type']}
+                                        >
+                                            <Select>
+                                                <Select.Option value="car_wash">Car Wash</Select.Option>
+                                                <Select.Option value="gas_station">Gas Station</Select.Option>
+                                                <Select.Option value="auto_service">Auto Service</Select.Option>
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={12} sm={8}>
+                                        <Form.Item
+                                            {...restField}
+                                            name={[name, 'lat']}
+                                        >
+                                            <InputNumber placeholder="Lat" className="w-full" step="any" />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={12} sm={8}>
+                                        <Form.Item
+                                            {...restField}
+                                            name={[name, 'lon']}
+                                        >
+                                            <InputNumber placeholder="Lon" className="w-full" step="any" />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
 
-                                            {!day.is_closed && (
-                                                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                                    <input
-                                                        type="time"
-                                                        value={day.opens_at?.slice(0, 5) || "09:00"}
-                                                        onChange={(e) =>
-                                                            updateSchedule(bIdx, dIdx, {
-                                                                opens_at: e.target.value + ":00",
-                                                            })
-                                                        }
-                                                        className="bg-background/80 border border-border/30 rounded px-2 py-0.5 text-xs text-foreground focus:border-blue-500 outline-none w-20"
-                                                    />
-                                                    <span className="text-muted-foreground text-xs">—</span>
-                                                    <input
-                                                        type="time"
-                                                        value={day.closes_at?.slice(0, 5) || "21:00"}
-                                                        onChange={(e) =>
-                                                            updateSchedule(bIdx, dIdx, {
-                                                                closes_at: e.target.value + ":00",
-                                                            })
-                                                        }
-                                                        className="bg-background/80 border border-border/30 rounded px-2 py-0.5 text-xs text-foreground focus:border-blue-500 outline-none w-20"
-                                                    />
-                                                </div>
+                                <div className="mt-4">
+                                    <Text type="secondary" size="small" className="flex items-center gap-2 mb-3">
+                                        <Clock size={14} />
+                                        {t("schedule") || "Schedule"}
+                                    </Text>
+                                    <div className="rounded-xl border border-border/10 overflow-hidden bg-background/30">
+                                        <Form.List name={[name, 'schedule']}>
+                                            {(dayFields) => (
+                                                <>
+                                                    {dayFields.map(({ key: dKey, name: dName, ...dRestField }) => {
+                                                      const dayValue = form.getFieldValue(['branches', name, 'schedule', dName]);
+                                                      return (
+                                                        <div key={dKey} className={`flex items-center justify-between p-3 ${dName < 6 ? 'border-b border-border/10' : ''}`}>
+                                                            <div className="flex items-center gap-4 flex-1">
+                                                                <Text strong className="w-24 text-xs">{getDayName(dayValue?.weekday)}</Text>
+                                                                <Form.Item
+                                                                    {...dRestField}
+                                                                    name={[dName, 'is_closed']}
+                                                                    valuePropName="checked"
+                                                                    className="mb-0"
+                                                                >
+                                                                    <Switch 
+                                                                        checkedChildren={t("closed") || "Closed"} 
+                                                                        unCheckedChildren={t("open") || "Open"}
+                                                                        className="bg-red-500"
+                                                                    />
+                                                                </Form.Item>
+                                                                <Form.Item
+                                                                    {...dRestField}
+                                                                    noStyle
+                                                                    shouldUpdate={(prev, curr) => 
+                                                                      prev.branches?.[name]?.schedule?.[dName]?.is_closed !== curr.branches?.[name]?.schedule?.[dName]?.is_closed
+                                                                    }
+                                                                >
+                                                                  {({ getFieldValue }) => {
+                                                                    const isClosed = getFieldValue(['branches', name, 'schedule', dName, 'is_closed']);
+                                                                    return !isClosed ? (
+                                                                      <Form.Item
+                                                                          {...dRestField}
+                                                                          name={[dName, 'timeRange']}
+                                                                          className="mb-0 flex-1"
+                                                                      >
+                                                                          <TimePicker.RangePicker format="HH:mm" className="w-full" size="small" />
+                                                                      </Form.Item>
+                                                                    ) : (
+                                                                      <Text type="secondary" className="italic text-xs flex-1">{t("dayOff") || "Day off"}</Text>
+                                                                    );
+                                                                  }}
+                                                                </Form.Item>
+                                                            </div>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                </>
                                             )}
-
-                                            {day.is_closed && (
-                                                <span className="text-xs text-muted-foreground/50 italic">
-                                                    {t("dayOff") || "Day off"}
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                                        </Form.List>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                        <Button 
+                            type="dashed" 
+                            onClick={() => add({ ...DEFAULT_BRANCH, schedule: createDefaultSchedule().map(s => ({ ...s, timeRange: [dayjs("09:00", "HH:mm"), dayjs("21:00", "HH:mm")] })) })} 
+                            block 
+                            icon={<Plus size={16} />}
+                            className="h-12 border-2"
+                        >
+                            {t("add")} {t("branches") || "Branch"}
+                        </Button>
                     </div>
-                ))}
-            </div>
+                )}
+            </Form.List>
 
-            <div className="flex gap-3 pt-2">
-                <Button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-200 h-10"
+            <div className="flex gap-4 pt-6">
+                <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    loading={loading} 
+                    block 
+                    size="large"
+                    className="h-12 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20"
                 >
-                    {loading ? (
-                        <span className="flex items-center gap-2">
-                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            {t("saving")}
-                        </span>
-                    ) : t("save")}
+                    {t("save")}
                 </Button>
-                <Button
-                    type="button"
-                    onClick={onCancel}
-                    disabled={loading}
-                    variant="outline"
-                    className="flex-1 border-border/30 hover:bg-accent/50 text-foreground transition-all duration-200 h-10"
+                <Button 
+                    onClick={onCancel} 
+                    disabled={loading} 
+                    block 
+                    size="large"
+                    className="h-12 border-border/30"
                 >
                     {t("cancel")}
                 </Button>
             </div>
-        </form>
+        </Form>
     );
 }

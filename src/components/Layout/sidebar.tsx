@@ -1,57 +1,60 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../lib/auth";
-import * as Collapsible from "@radix-ui/react-collapsible";
+import { Menu, Button, Modal } from "antd";
 import {
   LogOut,
+  Zap,
   ChevronDown,
-  ChevronRight,
-  Zap
 } from "lucide-react";
 import { getMenuStructure, MenuItem } from "../../constants/menu-items";
+import type { MenuProps } from 'antd';
 
 type SidebarProps = {
   onLogout: () => void;
   onNavigateStart?: () => void;
 };
 
+type MenuItemType = Required<MenuProps>['items'][number];
+
 export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
   const { user } = useAuth();
-  // Helper to find parent IDs of the active path
-  const getActiveParentIds = useCallback((items: MenuItem[], path: string): string[] => {
-    const parents: string[] = [];
-    
-    const findInItems = (items: MenuItem[], currentPath: string): boolean => {
-      for (const item of items) {
-        // Check if this item is the active one
-        if (item.path === currentPath || (item.path && item.path !== '/' && currentPath.startsWith(item.path + '/'))) {
-          return true;
-        }
-        
-        // Check sub items
-        if (item.subItems && findInItems(item.subItems, currentPath)) {
-          parents.push(item.id);
-          return true;
-        }
-      }
-      return false;
+  const [sidebarTheme, setSidebarTheme] = React.useState<'light' | 'dark'>('dark');
+
+  React.useEffect(() => {
+    const checkTheme = () => {
+      const isLight = document.documentElement.classList.contains('sidebar-light');
+      setSidebarTheme(isLight ? 'light' : 'dark');
     };
-    
-    findInItems(items, path);
-    return parents;
+
+    checkTheme();
+
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
   }, []);
 
-  // Initialize open menus based on current path
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
-    // We can't access menuStructure here because it's defined after, 
-    // but we can call getMenuStructure(t) directly or wait for useEffect.
-    // For now, let's start empty and let useEffect handle it immediately.
-    return {};
-  });
+  const handleLogout = () => {
+    Modal.confirm({
+      title: t("logoutConfirmTitle"),
+      content: t("logoutConfirmMessage"),
+      okText: t("logoutConfirmYes"),
+      cancelText: t("logoutConfirmNo"),
+      okButtonProps: { danger: true },
+      centered: true,
+      onOk: () => {
+        onLogout();
+      },
+    });
+  };
 
   const userRole = user?.role || 'client_admin';
   const isSuperAdmin = userRole === 'super_admin';
@@ -73,136 +76,59 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
     return filterItems(getMenuStructure(t));
   }, [t, userRole]);
 
-  // Sync open menus with current path
-  React.useEffect(() => {
-    const activeParents = getActiveParentIds(menuStructure, location.pathname);
-    if (activeParents.length > 0) {
-      setOpenMenus(prev => {
-        const next = { ...prev };
-        let changed = false;
-        activeParents.forEach(id => {
-          if (!next[id]) {
-            next[id] = true;
-            changed = true;
+  // Convert MenuItem to Ant Design Menu items
+  const antMenuItems: MenuItemType[] = useMemo(() => {
+    const convert = (items: MenuItem[]): MenuItemType[] => {
+      return items.map(item => {
+        const Icon = item.icon;
+        const hasSubItems = item.subItems && item.subItems.length > 0;
+        
+        if (hasSubItems) {
+          return {
+            key: item.id,
+            label: item.label,
+            icon: <Icon size={18} />,
+            children: convert(item.subItems!),
+          } as MenuItemType;
+        }
+
+        return {
+          key: item.path || item.id,
+          label: item.label,
+          icon: <Icon size={18} />,
+          onClick: () => {
+            if (item.path) {
+              if (onNavigateStart) onNavigateStart();
+              navigate(item.path);
+            }
           }
-        });
-        return changed ? next : prev;
+        } as MenuItemType;
       });
-    }
-  }, [location.pathname, menuStructure, getActiveParentIds]);
+    };
+    return convert(menuStructure);
+  }, [menuStructure, navigate, onNavigateStart]);
 
-  const toggleMenu = (id: string) => {
-    setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const navigateTo = (path: string) => {
-    if (location.pathname === path) return;
-    if (onNavigateStart) onNavigateStart();
-    navigate(path);
-  };
-
-  const renderMenuItem = (item: MenuItem, isSubItem = false) => {
-    const Icon = item.icon;
-    const hasSubItems = item.subItems && item.subItems.length > 0;
-    const isOpen = openMenus[item.id];
-    
-    const isActive = item.path 
-      ? (location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'))) 
-      : false;
-      
-    const isChildActive = item.subItems?.some(sub => 
-      location.pathname === sub.path || (sub.path && sub.path !== '/' && location.pathname.startsWith(sub.path + '/'))
-    );
-
-    const isGroup = !item.path && hasSubItems && !isSubItem;
-
-    if (isGroup) {
-      return (
-        <Collapsible.Root 
-          key={item.id} 
-          open={isOpen} 
-          onOpenChange={() => toggleMenu(item.id)}
-          className="mt-6 mb-2"
-        >
-          <Collapsible.Trigger asChild>
-            <button className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors group cursor-pointer text-left">
-              <div className="flex items-center gap-2 min-w-0">
-                <Icon size={14} className="group-hover:text-primary transition-colors flex-shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </div>
-              <div className={`transition-transform duration-300 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>
-                <ChevronDown size={14} />
-              </div>
-            </button>
-          </Collapsible.Trigger>
-          
-          <Collapsible.Content className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-            <div className="mt-1 space-y-1 py-1">
-              {item.subItems!.map(sub => renderMenuItem(sub, true))}
-            </div>
-          </Collapsible.Content>
-        </Collapsible.Root>
-      );
-    }
-
-    return (
-      <div key={item.id} className="w-full">
-        {hasSubItems ? (
-          <Collapsible.Root open={isOpen} onOpenChange={() => toggleMenu(item.id)}>
-            <Collapsible.Trigger asChild>
-              <button
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 text-left ${isSubItem ? 'pl-11' : ''} ${
-                  (isChildActive && !isOpen)
-                    ? "text-primary-foreground shadow-md"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                }`}
-                style={{
-                  background: (isChildActive && !isOpen)
-                    ? `linear-gradient(135deg, var(--theme-color) 0%, oklch(from var(--theme-color) calc(l - 0.1) c h) 100%)`
-                    : undefined,
-                }}
-              >
-                <Icon 
-                  size={isSubItem ? 18 : 20} 
-                  className={`flex-shrink-0 transition-transform duration-300 ${isChildActive ? 'scale-110' : ''}`} 
-                />
-                <span className={`flex-1 truncate ${isSubItem ? 'text-[13px]' : 'text-sm'}`}>{item.label}</span>
-                <div className={`transition-transform duration-300 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>
-                  <ChevronDown size={16} />
-                </div>
-              </button>
-            </Collapsible.Trigger>
-            <Collapsible.Content className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-              <div className="mt-1 space-y-1 py-1">
-                {item.subItems!.map(sub => renderMenuItem(sub, true))}
-              </div>
-            </Collapsible.Content>
-          </Collapsible.Root>
-        ) : (
-          <button
-            onClick={() => item.path && navigateTo(item.path)}
-            disabled={location.pathname === item.path}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 text-left ${isSubItem ? 'pl-11' : ''} ${
-              isActive
-                ? "text-primary-foreground shadow-md cursor-default"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            }`}
-            style={{
-              background: isActive
-                ? `linear-gradient(135deg, var(--theme-color) 0%, oklch(from var(--theme-color) calc(l - 0.1) c h) 100%)`
-                : undefined,
-            }}
-          >
-            <Icon 
-              size={isSubItem ? 18 : 20} 
-              className={`flex-shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} 
-            />
-            <span className={`flex-1 truncate ${isSubItem ? 'text-[13px]' : 'text-sm'}`}>{item.label}</span>
-          </button>
-        )}
-      </div>
-    );
-  };
+  // Find active key and open keys
+  const selectedKeys = [location.pathname];
+  
+  // Simple logic to find which submenus should be open based on current path
+  const openKeys = useMemo(() => {
+    const keys: string[] = [];
+    const findParents = (items: MenuItem[], targetPath: string, path: string[] = []) => {
+      for (const item of items) {
+        if (item.path === targetPath) {
+          keys.push(...path);
+          return true;
+        }
+        if (item.subItems) {
+          if (findParents(item.subItems, targetPath, [...path, item.id])) return true;
+        }
+      }
+      return false;
+    };
+    findParents(menuStructure, location.pathname);
+    return keys;
+  }, [menuStructure, location.pathname]);
 
   return (
     <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border/10">
@@ -224,9 +150,21 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
       </div>
 
       {/* Menu items */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
-        {menuStructure.map(item => renderMenuItem(item))}
-      </nav>
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-4 px-2">
+        <Menu
+          mode="inline"
+          theme={sidebarTheme}
+          selectedKeys={selectedKeys}
+          defaultOpenKeys={openKeys}
+          items={antMenuItems}
+          style={{ 
+            background: 'transparent', 
+            border: 'none',
+          }}
+          inlineIndent={16}
+          className="antd-sidebar-menu"
+        />
+      </div>
 
       {/* User info & Logout */}
       <div className="px-4 py-6 border-t border-sidebar-border/10 bg-sidebar-accent/20">
@@ -235,13 +173,52 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
           <p className="text-[11px] font-medium text-sidebar-foreground/40 truncate mt-0.5">{user?.phone}</p>
         </div>
         <button
-          onClick={onLogout}
+          onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-destructive hover:bg-destructive/10 rounded-xl transition-all hover:gap-4 group"
         >
           <LogOut size={20} className="transition-transform group-hover:-translate-x-1" />
           <span>{t("logout")}</span>
         </button>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .antd-sidebar-menu, 
+        .antd-sidebar-menu .ant-menu-sub {
+          background: transparent !important;
+        }
+        .antd-sidebar-menu .ant-menu-item-group-title {
+          font-size: 11px !important;
+          font-weight: 700 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.05em !important;
+          color: var(--sidebar-foreground) !important;
+          opacity: 0.5;
+          padding: 16px 16px 8px !important;
+        }
+        .antd-sidebar-menu .ant-menu-item, 
+        .antd-sidebar-menu .ant-menu-submenu-title {
+          border-radius: 12px !important;
+          margin: 4px 8px !important;
+          width: calc(100% - 16px) !important;
+          height: 44px !important;
+          line-height: 44px !important;
+          font-weight: 500 !important;
+        }
+        .antd-sidebar-menu .ant-menu-item-selected {
+          background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%) !important;
+          color: white !important;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+        }
+        .antd-sidebar-menu .ant-menu-item:hover:not(.ant-menu-item-selected),
+        .antd-sidebar-menu .ant-menu-submenu-title:hover {
+          background: var(--sidebar-accent) !important;
+          opacity: 0.8;
+        }
+        .antd-sidebar-menu .ant-menu-submenu-arrow {
+          color: var(--sidebar-foreground) !important;
+          opacity: 0.6;
+        }
+      `}} />
     </div>
   );
 }

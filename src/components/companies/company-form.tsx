@@ -1,11 +1,20 @@
 "use client"
 
-import type React from "react"
+import { useTranslation } from "react-i18next";
+import { 
+  Form, 
+  Input, 
+  Button, 
+  Space, 
+  Typography, 
+  Card, 
+  Row, 
+  Col, 
+  Divider 
+} from "antd";
+import { Building2, MapPin, Plus, Trash2 } from "lucide-react";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { X } from "lucide-react"
+const { Text } = Typography;
 
 interface BranchOffice {
   id: string
@@ -32,148 +41,131 @@ interface CompanyFormProps {
 }
 
 export default function CompanyForm({ company, onSubmit, onCancel }: CompanyFormProps) {
-  const [formData, setFormData] = useState<CompanyFormData>({
-    name: "",
-    description: "",
-    ownerId: "",
-    branches: [],
-  })
-  const [newBranch, setNewBranch] = useState({ name: "", location: "" })
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
 
-  useEffect(() => {
-    if (company) {
-      setFormData({
-        name: company.name,
-        description: company.description || "",
-        ownerId: company.ownerId || "",
-        branches: company.branches,
-      })
-    }
-  }, [company])
+  const initialValues = {
+    name: company?.name || "",
+    description: company?.description || "",
+    ownerId: company?.ownerId || "",
+    branches: company?.branches || [],
+  };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.name) {
-      newErrors.name = "Kompaniya nomi talab qilinadi"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleAddBranch = () => {
-    if (newBranch.name && newBranch.location) {
-      const branch: BranchOffice = {
-        id: Date.now().toString(),
-        name: newBranch.name,
-        location: newBranch.location,
-      }
-      setFormData({
-        ...formData,
-        branches: [...formData.branches, branch],
-      })
-      setNewBranch({ name: "", location: "" })
-    }
-  }
-
-  const handleRemoveBranch = (id: string) => {
-    setFormData({
-      ...formData,
-      branches: formData.branches.filter((b) => b.id !== id),
-    })
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (validateForm()) {
-      onSubmit(formData)
-    }
-  }
+  const handleFinish = (values: any) => {
+    onSubmit(values);
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Company Info */}
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Kompaniya Nomi</label>
-        <Input
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="bg-input text-foreground border-border/30"
-          placeholder="Kompaniya nomi"
+    <Form
+      form={form}
+      layout="vertical"
+      initialValues={initialValues}
+      onFinish={handleFinish}
+      requiredMark={false}
+      className="space-y-4"
+    >
+      <Form.Item
+        name="name"
+        label={<Space size={4}><Building2 size={14} className="text-blue-500" />{t("companyName") || "Kompaniya Nomi"}</Space>}
+        rules={[{ required: true, message: t("companyNameRequired") || "Kompaniya nomi talab qilinadi" }]}
+      >
+        <Input size="large" placeholder={t("enterCompanyName") || "Kompaniya nomi"} />
+      </Form.Item>
+
+      <Form.Item
+        name="description"
+        label={<Space size={4}><Text strong size="small">{t("description") || "Tavsif"}</Text></Space>}
+      >
+        <Input.TextArea 
+          rows={3} 
+          placeholder={t("descriptionPlaceholder") || "Kompaniya haqida ma'lumot"} 
+          className="bg-background/50"
         />
-        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-      </div>
+      </Form.Item>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Tavsif</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-3 py-2 bg-input text-foreground border border-border/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Kompaniya haqida ma'lumot"
-          rows={3}
-        />
-      </div>
+      <Divider orientation="left" className="!my-6">
+        <Space size={4}>
+          <MapPin size={16} className="text-pink-500" />
+          {t("branches") || "Filiallar"}
+        </Space>
+      </Divider>
 
-      {/* Branches Section */}
-      <div>
-        <h3 className="text-sm font-semibold text-foreground mb-4">Filiallar</h3>
-
-        {/* Add Branch Form */}
-        <div className="space-y-3 mb-4 p-4 bg-sidebar/20 rounded-lg border border-border/20">
-          <Input
-            value={newBranch.name}
-            onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
-            className="bg-input text-foreground border-border/30"
-            placeholder="Filial nomi"
-          />
-          <Input
-            value={newBranch.location}
-            onChange={(e) => setNewBranch({ ...newBranch, location: e.target.value })}
-            className="bg-input text-foreground border-border/30"
-            placeholder="Lokatsiya"
-          />
-          <Button type="button" onClick={handleAddBranch} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-            Filial Qo'shish
-          </Button>
-        </div>
-
-        {/* Branches List */}
-        {formData.branches.length > 0 && (
-          <div className="space-y-2">
-            {formData.branches.map((branch) => (
-              <div
-                key={branch.id}
-                className="flex items-start justify-between p-3 bg-sidebar/20 border border-border/20 rounded-lg"
+      <Form.List name="branches">
+        {(fields, { add, remove }) => (
+          <div className="space-y-4">
+            {fields.map(({ key, name, ...restField }) => (
+              <Card 
+                key={key} 
+                size="small" 
+                bordered={false} 
+                className="bg-card border border-border/20 shadow-sm"
+                extra={
+                  <Button 
+                    type="text" 
+                    danger 
+                    icon={<Trash2 size={16} />} 
+                    onClick={() => remove(name)} 
+                  />
+                }
               >
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{branch.name}</p>
-                  <p className="text-xs text-muted-foreground">{branch.location}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveBranch(branch.id)}
-                  className="p-1 hover:bg-red-500/10 text-red-500 rounded transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+                <Row gutter={12}>
+                  <Col span={12}>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'name']}
+                      label={t("branchName") || "Filial nomi"}
+                      rules={[{ required: true, message: t("branchNameRequired") || "Filial nomi talab qilinadi" }]}
+                      className="mb-0"
+                    >
+                      <Input placeholder={t("branchName") || "Filial nomi"} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'location']}
+                      label={t("location") || "Lokatsiya"}
+                      rules={[{ required: true, message: t("locationRequired") || "Lokatsiya talab qilinadi" }]}
+                      className="mb-0"
+                    >
+                      <Input placeholder={t("location") || "Lokatsiya"} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Card>
             ))}
+            <Button 
+              type="dashed" 
+              onClick={() => add()} 
+              block 
+              icon={<Plus size={16} />}
+              className="h-10"
+            >
+              {t("addBranch") || "Filial Qo'shish"}
+            </Button>
           </div>
         )}
-      </div>
+      </Form.List>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 pt-4 border-t border-border/20">
-        <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-          Saqlash
+      <div className="flex gap-4 pt-6">
+        <Button 
+          type="primary" 
+          htmlType="submit" 
+          block 
+          size="large"
+          className="h-12 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20"
+        >
+          {t("save") || "Saqlash"}
         </Button>
-        <Button type="button" onClick={onCancel} className="flex-1 bg-sidebar hover:bg-sidebar/80 text-foreground">
-          Bekor qilish
+        <Button 
+          onClick={onCancel} 
+          block 
+          size="large"
+          className="h-12 border-border/30"
+        >
+          {t("cancel") || "Bekor qilish"}
         </Button>
       </div>
-    </form>
+    </Form>
   )
 }
