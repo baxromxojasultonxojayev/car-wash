@@ -55,7 +55,7 @@ export default function SettingsPanel() {
         placement="right"
         onClose={() => setIsOpen(false)}
         open={isOpen}
-        width={400}
+        size={400}
         className="antd-settings-drawer"
         styles={{
           body: { padding: '24px' },

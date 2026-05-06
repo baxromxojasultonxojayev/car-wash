@@ -122,6 +122,11 @@ export default function DataTable<T extends Record<string, any>>({
         [columns]
     );
 
+    const paginatedData = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredData.slice(start, start + pageSize);
+    }, [filteredData, currentPage, pageSize]);
+
     // ─── Render ─────────────────────────────────────────────────────
 
     if (error) {
@@ -141,11 +146,6 @@ export default function DataTable<T extends Record<string, any>>({
             </Card>
         );
     }
-
-    const paginatedData = useMemo(() => {
-        const start = (currentPage - 1) * pageSize;
-        return filteredData.slice(start, start + pageSize);
-    }, [filteredData, currentPage, pageSize]);
 
     return (
         <div className="space-y-4">
