@@ -58,44 +58,52 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
 
   const userRole = user?.role || 'client_admin';
   const isSuperAdmin = userRole === 'super_admin';
-  
+
+  console.log("Sidebar User Role:", userRole);
+
   // Filter menu structure by role
   const menuStructure = useMemo(() => {
     const filterItems = (items: MenuItem[]): MenuItem[] => {
       return items
-        .filter(item => !item.roles || item.roles.includes(userRole))
+        .filter(item => {
+          const hasRole = !item.roles || item.roles.includes(userRole);
+          return hasRole;
+        })
         .map(item => ({
           ...item,
           subItems: item.subItems ? filterItems(item.subItems) : undefined
         }))
         .filter(item => {
-          if (item.subItems && item.subItems.length > 0) return true;
-          return !!item.path;
+          // Keep if it has a path OR it has non-empty subItems
+          const hasSubItems = item.subItems && item.subItems.length > 0;
+          return hasSubItems || !!item.path;
         });
     };
-    return filterItems(getMenuStructure(t));
+    const filtered = filterItems(getMenuStructure(t));
+    console.log("Filtered Menu:", filtered);
+    return filtered;
   }, [t, userRole]);
 
   // Convert MenuItem to Ant Design Menu items
   const antMenuItems: MenuItemType[] = useMemo(() => {
-    const convert = (items: MenuItem[]): MenuItemType[] => {
+    const convert = (items: MenuItem[], isTopLevel = true): MenuItemType[] => {
       return items.map(item => {
         const Icon = item.icon;
         const hasSubItems = item.subItems && item.subItems.length > 0;
-        
+
         if (hasSubItems) {
           return {
             key: item.id,
             label: item.label,
-            icon: <Icon size={18} />,
-            children: convert(item.subItems!),
+            icon: Icon ? <Icon size={18} /> : undefined,
+            children: convert(item.subItems!, false),
           } as MenuItemType;
         }
 
         return {
           key: item.path || item.id,
           label: item.label,
-          icon: <Icon size={18} />,
+          icon: Icon ? <Icon size={18} /> : undefined,
           onClick: () => {
             if (item.path) {
               if (onNavigateStart) onNavigateStart();
@@ -110,7 +118,7 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
 
   // Find active key and open keys
   const selectedKeys = [location.pathname];
-  
+
   // Simple logic to find which submenus should be open based on current path
   const openKeys = useMemo(() => {
     const keys: string[] = [];
@@ -157,8 +165,8 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
           selectedKeys={selectedKeys}
           defaultOpenKeys={openKeys}
           items={antMenuItems}
-          style={{ 
-            background: 'transparent', 
+          style={{
+            background: 'transparent',
             border: 'none',
           }}
           inlineIndent={16}
@@ -181,7 +189,8 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
         </button>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .antd-sidebar-menu, 
         .antd-sidebar-menu .ant-menu-sub {
           background: transparent !important;
@@ -195,6 +204,11 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
           opacity: 0.5;
           padding: 16px 16px 8px !important;
         }
+        /* Light mode text colors */
+        .antd-sidebar-menu.ant-menu-light .ant-menu-item-group-title {
+          color: #64748b !important;
+          opacity: 0.8;
+        }
         .antd-sidebar-menu .ant-menu-item, 
         .antd-sidebar-menu .ant-menu-submenu-title {
           border-radius: 12px !important;
@@ -203,6 +217,11 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
           height: 44px !important;
           line-height: 44px !important;
           font-weight: 500 !important;
+          color: var(--sidebar-foreground) !important;
+        }
+        .antd-sidebar-menu.ant-menu-light .ant-menu-item:not(.ant-menu-item-selected), 
+        .antd-sidebar-menu.ant-menu-light .ant-menu-submenu-title {
+          color: #334155 !important;
         }
         .antd-sidebar-menu .ant-menu-item-selected {
           background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%) !important;
@@ -217,6 +236,9 @@ export default function Sidebar({ onLogout, onNavigateStart }: SidebarProps) {
         .antd-sidebar-menu .ant-menu-submenu-arrow {
           color: var(--sidebar-foreground) !important;
           opacity: 0.6;
+        }
+        .antd-sidebar-menu.ant-menu-light .ant-menu-submenu-arrow {
+          color: #334155 !important;
         }
       `}} />
     </div>

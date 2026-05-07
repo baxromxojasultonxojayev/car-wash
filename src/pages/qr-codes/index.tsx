@@ -179,7 +179,7 @@ export default function QRCodesPage() {
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
           <Text strong className="block truncate text-base">{qr.name}</Text>
-          <Text code size="small" className="mt-1">{qr.code}</Text>
+          <Text code className="mt-1 text-xs">{qr.code}</Text>
         </div>
         <Tag color={qr.status === 'active' ? 'success' : 'default'} className="rounded-full border-none mr-0">
           {qr.status === 'active' ? t('active') : t('inactive')}

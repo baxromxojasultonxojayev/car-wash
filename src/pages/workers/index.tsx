@@ -199,7 +199,7 @@ export default function WorkersPage() {
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
           <Text strong className="block truncate text-base">{worker.name}</Text>
-          <Text size="small" className="text-muted-foreground block truncate">{worker.position} • {worker.kioskName}</Text>
+          <Text className="text-muted-foreground block truncate text-sm">{worker.position} • {worker.kioskName}</Text>
         </div>
         <Switch 
           checked={worker.isActive} 

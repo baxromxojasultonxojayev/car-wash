@@ -9,8 +9,8 @@ import {
   Key,
 } from 'lucide-react';
 import { Button, Card, Space, Typography, Tag } from 'antd';
-import DataTable, { Column } from '@/components/Table/DataTable';
-import { crud } from '@/lib/api';
+import DataTable, { Column } from '../../components/Table/DataTable';
+import { crud } from '../../lib/api';
 import { toast } from 'sonner';
 import type { ApiAccount, AccountFormData } from './type';
 import type { ApiOrganization } from '../organizations/type';
@@ -40,9 +40,6 @@ export default function AccountsPage() {
     setError(null);
     try {
       const response = await crud.getAll<any>(API_PATH);
-      console.log('Admins API Response:', response);
-
-      // Handle different response structures (list directly or { data: [] })
       let accountsData = [];
       if (Array.isArray(response)) {
         accountsData = response;
@@ -51,7 +48,6 @@ export default function AccountsPage() {
       } else if (response && Array.isArray(response.items)) {
         accountsData = response.items;
       } else if (response && typeof response === 'object') {
-        // If it's a single object or something else, wrap it if it looks like an account
         accountsData = response.id ? [response] : [];
       }
 
@@ -80,16 +76,13 @@ export default function AccountsPage() {
   const handleSubmit = async (formData: AccountFormData) => {
     setModalLoading(true);
     try {
-      // Force static org_id as requested (using a valid UUID format)
-      const payload = { ...formData, org_id: '00000000-0000-0000-0000-000000000000' };
-
       if (editingAccount) {
         // PATCH /api/v1/super/accounts/admins/{id}
-        await crud.patch(API_PATH, editingAccount.id, payload);
+        await crud.patch(API_PATH, editingAccount.id, formData);
         toast.success(t('updateSuccess'));
       } else {
         // POST /api/v1/super/accounts/admins
-        await crud.create(API_PATH, payload);
+        await crud.create(API_PATH, formData);
         toast.success(t('createSuccess'));
       }
       setIsModalOpen(false);

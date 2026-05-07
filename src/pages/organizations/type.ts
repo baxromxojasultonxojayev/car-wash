@@ -1,41 +1,43 @@
-export interface Schedule {
-  weekday: number;
-  is_closed: boolean;
-  opens_at: string | null;
-  closes_at: string | null;
-}
-
-export interface Branch {
-  name: string;
-  type: string;
-  address: string;
-  lat: number;
-  lon: number;
-  schedule: Schedule[];
+export interface OrganizationLogo {
+  filename: string;
+  content_type: string;
+  size: number;
 }
 
 export interface ApiOrganization {
   id: string;
   display_name: string;
+  description: string;
   legal_name: string;
-  tax_id: string;
-  default_take_rate: number;
-  status: string;
-  starts_at: string;
-  expires_at: string;
-  branches: Branch[];
+  phone: string;
+  email: string;
+  address: string;
+  opening_time: string;
+  closing_time: string;
+  inn: string;
+  bank_account_number: string;
+  mfo: string;
+  oked: string;
+  logo?: OrganizationLogo | null;
+  status: 'active' | 'deactivated' | 'deleted';
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface OrgFormData {
   display_name: string;
+  description: string;
   legal_name: string;
-  tax_id: string;
-  default_take_rate: number;
-  status: string;
-  starts_at: string;
-  expires_at: string;
-  branches: Branch[];
+  phone: string;
+  email: string;
+  address: string;
+  opening_time: string;
+  closing_time: string;
+  inn: string;
+  bank_account_number: string;
+  mfo: string;
+  oked: string;
+  logo?: OrganizationLogo | null;
 }
 
 export interface OrgFormProps {

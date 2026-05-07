@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Zap, DollarSign, Calendar, MapPin } from 'lucide-react';
-import { Button, Card, Badge, Typography, Row, Col, Space } from 'antd';
+import { Button, Card, Badge, Typography, Row, Col, Space, Tag } from 'antd';
 
 const { Title, Text, Paragraph } = Typography;
 

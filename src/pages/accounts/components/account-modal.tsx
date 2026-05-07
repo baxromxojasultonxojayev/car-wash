@@ -1,6 +1,8 @@
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Form, Input, Select, Modal, Space, Tag } from "antd";
 import { User, Lock, Building2 } from "lucide-react";
+import { apiGet } from "../../../lib/api";
 import type { ApiAccount, AccountFormData } from "../type";
 import type { ApiOrganization } from "../../organizations/type";
 
@@ -21,21 +23,46 @@ export default function AccountModal({
 }: AccountModalProps) {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const [organizations, setOrganizations] = useState<ApiOrganization[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const fetchOrgs = async () => {
+        setOrgsLoading(true);
+        try {
+          const { apiGet } = await import("../../../lib/api");
+          const data = await apiGet<ApiOrganization[]>("/super/organizations");
+          setOrganizations(Array.isArray(data) ? data : []);
+        } catch (err) {
+          console.error("Failed to fetch organizations:", err);
+        } finally {
+          setOrgsLoading(false);
+        }
+      };
+      fetchOrgs();
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      form.setFieldsValue({
+        login: editingAccount?.login || "",
+        password: "",
+        org_id: editingAccount?.org_id || undefined,
+      });
+    } else {
+      form.resetFields();
+    }
+  }, [isOpen, editingAccount, form]);
 
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
       await onSubmit(values);
-      form.resetFields();
     } catch (error) {
       console.error("Validate Failed:", error);
     }
-  };
-
-  const initialValues = {
-    login: editingAccount?.login || "",
-    password: "",
-    org_id: editingAccount?.org_id || undefined,
   };
 
   return (
@@ -48,13 +75,14 @@ export default function AccountModal({
       width={480}
       okText={t("save")}
       cancelText={t("cancel")}
-      okButtonProps={{ size: "large", className: "bg-blue-600" }}
+      okButtonProps={{ size: "large", className: "bg-blue-600 shadow-lg shadow-blue-600/20" }}
       cancelButtonProps={{ size: "large" }}
+      className="centered-modal"
+      centered
     >
       <Form
         form={form}
         layout="vertical"
-        initialValues={initialValues}
         className="py-4"
         requiredMark={false}
       >
@@ -68,7 +96,7 @@ export default function AccountModal({
           }
           rules={[{ required: true, message: t("enterUsername") }]}
         >
-          <Input placeholder={t("enterUsername")} size="large" onPressEnter={handleOk} />
+          <Input placeholder={t("enterUsername")} size="large" onPressEnter={handleOk} className="rounded-xl" />
         </Form.Item>
 
         <Form.Item
@@ -96,10 +124,36 @@ export default function AccountModal({
             }
             size="large"
             onPressEnter={handleOk}
+            className="rounded-xl"
           />
         </Form.Item>
 
-        {/* Organization field hidden because it is currently static */}
+        <Form.Item
+          name="org_id"
+          label={
+            <Space size={4}>
+              <Building2 size={14} className="text-emerald-500" />
+              {t("organization") || "Tashkilot"}
+            </Space>
+          }
+          rules={[{ required: true, message: t("selectOrganization") || "Tashkilotni tanlang" }]}
+        >
+          <Select
+            placeholder={t("selectOrganization") || "Tashkilotni tanlang"}
+            size="large"
+            loading={orgsLoading}
+            showSearch
+            optionFilterProp="children"
+            className="rounded-xl"
+            filterOption={(input, option) =>
+              (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+            }
+            options={organizations.map(org => ({
+              value: org.id,
+              label: org.display_name
+            }))}
+          />
+        </Form.Item>
       </Form>
     </Modal>
   );

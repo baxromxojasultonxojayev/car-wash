@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // User ma'lumotlarini aniqlash
       // Foydalanuvchi aytganidek: SuperAdmin/root1234 -> super_admin
-      const isSuperAdmin = loginValue === 'SuperAdmin' && password === 'root1234';
+      const isSuperAdmin = loginValue === 'Superadmin1' && password === 'root1234';
       let newUser: User;
 
       if (response.user && response.user.id) {

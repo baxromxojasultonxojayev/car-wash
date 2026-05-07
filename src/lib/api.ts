@@ -129,6 +129,8 @@ export async function api<T = any>(path: string, options: ApiOptions = {}): Prom
     }
   }
 
+  if (res.status === 204) return null as any;
+
   const payload = await parseResponse(res);
 
   if (!res.ok) {

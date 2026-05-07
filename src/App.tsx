@@ -20,8 +20,9 @@ function AntdConfigProvider({ children }: { children: React.ReactNode }) {
           borderRadius: 8,
           fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           colorBgBase: isDark ? '#0f172a' : '#f8fafc',
-          colorBgContainer: isDark ? '#0f172a' : '#ffffff',
-          colorBorder: isDark ? '#1e293b' : '#e2e8f0',
+          colorBgContainer: isDark ? '#1e293b' : '#ffffff',
+          colorBgElevated: isDark ? '#1e293b' : '#ffffff',
+          colorBorder: isDark ? '#334155' : '#e2e8f0',
         },
         components: {
           Button: {

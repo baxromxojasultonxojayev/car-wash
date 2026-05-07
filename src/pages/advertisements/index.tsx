@@ -197,7 +197,7 @@ export default function AdvertisementsPage() {
           <Text strong className="block truncate text-base">{ad.title}</Text>
           <Space size={4} className="mt-1">
             {ad.type === 'image' ? <ImageIcon size={14} /> : <Video size={14} />}
-            <Text size="small" className="text-muted-foreground">{t(ad.type)}</Text>
+            <Text className="text-muted-foreground text-sm">{t(ad.type)}</Text>
           </Space>
         </div>
         <Switch 

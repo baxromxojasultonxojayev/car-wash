@@ -7,55 +7,36 @@ import {
 } from "lucide-react";
 import type { TableProps } from 'antd';
 
+import "./style.scss";
+
 // ─── Types ───────────────────────────────────────────────────────
 
 export interface Column<T> {
-    /** Kalit — ma'lumotdagi field nomi */
     key: string;
-    /** Jadval header matni */
     header: string;
-    /** Custom render funksiya */
     render?: (value: any, row: T, index: number) => React.ReactNode;
-    /** Mobilda yashirish */
     hideOnMobile?: boolean;
-    /** Tablet dan kichik ekranlarda yashirish */
     hideOnTablet?: boolean;
-    /** Matnni o'ngga joylashtirish (actionlar uchun) */
     align?: "left" | "center" | "right";
-    /** Max width (desktop) */
     maxWidth?: string;
-    /** Bu column search ga ta'sir qiladi */
     searchable?: boolean;
 }
 
 export interface DataTableProps<T> {
-    /** Ma'lumotlar ro'yxati */
     data: T[];
-    /** Jadval ustunlari */
     columns: Column<T>[];
-    /** Yuklanmoqda holati */
     loading?: boolean;
-    /** Qidiruv placeholder */
     searchPlaceholder?: string;
-    /** Qidiruv yoqilganmi */
     searchable?: boolean;
-    /** Sahifalash — har bir sahifadagi elementlar soni */
     pageSize?: number;
-    /** Sahifalash ko'rsatilsinmi */
     showPagination?: boolean;
-    /** Mobile card uchun render */
     renderMobileCard?: (row: T, index: number) => React.ReactNode;
-    /** ID olish funksiyasi */
     getRowId?: (row: T) => string;
-    /** Hech narsa topilmasa ko'rsatiladigan xabar */
     emptyMessage?: string;
-    /** Xatolik xabari */
     error?: string | null;
-    /** Qayta yuklash */
     onRetry?: () => void;
+    onRowClick?: (row: T) => void;
 }
-
-// ─── Component ───────────────────────────────────────────────────
 
 export default function DataTable<T extends Record<string, any>>({
     data,
@@ -70,6 +51,7 @@ export default function DataTable<T extends Record<string, any>>({
     emptyMessage,
     error,
     onRetry,
+    onRowClick,
 }: DataTableProps<T>) {
     const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState("");
@@ -77,14 +59,14 @@ export default function DataTable<T extends Record<string, any>>({
 
     // ─── Search ─────────────────────────────────────────────────────
 
-    const searchableKeys = useMemo(() => 
+    const searchableKeys = useMemo(() =>
         columns
             .filter((c) => c.searchable !== false)
             .map((c) => c.key),
         [columns]
     );
 
-    const filteredData = useMemo(() => 
+    const filteredData = useMemo(() =>
         searchTerm
             ? data.filter((row) =>
                 searchableKeys.some((key) => {
@@ -97,9 +79,7 @@ export default function DataTable<T extends Record<string, any>>({
         [data, searchTerm, searchableKeys]
     );
 
-    // ─── Ant Design Table Columns ────────────────────────────────────
-
-    const antColumns: TableProps<T>['columns'] = useMemo(() => 
+    const antColumns: TableProps<T>['columns'] = useMemo(() =>
         columns.map(col => ({
             title: col.header,
             dataIndex: col.key,
@@ -116,7 +96,7 @@ export default function DataTable<T extends Record<string, any>>({
                     ${col.hideOnTablet ? "hidden lg:table-cell" : ""}
                 `,
             }),
-            render: (value: any, record: T, index: number) => 
+            render: (value: any, record: T, index: number) =>
                 col.render ? col.render(value, record, index) : (value ?? "-")
         })),
         [columns]
@@ -126,8 +106,6 @@ export default function DataTable<T extends Record<string, any>>({
         const start = (currentPage - 1) * pageSize;
         return filteredData.slice(start, start + pageSize);
     }, [filteredData, currentPage, pageSize]);
-
-    // ─── Render ─────────────────────────────────────────────────────
 
     if (error) {
         return (
@@ -229,39 +207,14 @@ export default function DataTable<T extends Record<string, any>>({
                     locale={{
                         emptyText: <Empty description={emptyMessage || t("noData")} />
                     }}
+                    onRow={(record) => ({
+                        onClick: () => onRowClick?.(record),
+                        style: { cursor: onRowClick ? 'pointer' : 'default' }
+                    })}
                     className="antd-custom-table"
                 />
             </Card>
 
-            <style dangerouslySetInnerHTML={{ __html: `
-                .antd-custom-table .ant-table {
-                    background: transparent !important;
-                }
-                .antd-custom-table .ant-table-thead > tr > th {
-                    background: var(--sidebar-bg) !important;
-                    color: var(--foreground) !important;
-                    border-bottom: 1px solid var(--border) !important;
-                    opacity: 0.8;
-                    font-weight: 600;
-                    font-size: 13px;
-                }
-                .antd-custom-table .ant-table-tbody > tr > td {
-                    border-bottom: 1px solid var(--border) !important;
-                    color: var(--foreground) !important;
-                    background: transparent !important;
-                    transition: all 0.3s;
-                }
-                .antd-custom-table .ant-table-tbody > tr:hover > td {
-                    background: var(--accent) !important;
-                    opacity: 0.9;
-                }
-                .antd-custom-table .ant-pagination-item-active {
-                    border-color: var(--primary) !important;
-                }
-                .antd-custom-table .ant-pagination-item-active a {
-                    color: var(--primary) !important;
-                }
-            `}} />
         </div>
     );
 }

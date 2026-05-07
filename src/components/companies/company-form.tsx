@@ -74,7 +74,7 @@ export default function CompanyForm({ company, onSubmit, onCancel }: CompanyForm
 
       <Form.Item
         name="description"
-        label={<Space size={4}><Text strong size="small">{t("description") || "Tavsif"}</Text></Space>}
+        label={<Space size={4}><Text strong className="text-sm">{t("description") || "Tavsif"}</Text></Space>}
       >
         <Input.TextArea 
           rows={3} 
@@ -83,7 +83,7 @@ export default function CompanyForm({ company, onSubmit, onCancel }: CompanyForm
         />
       </Form.Item>
 
-      <Divider orientation="left" className="!my-6">
+      <Divider orientation={"left" as any} className="!my-6">
         <Space size={4}>
           <MapPin size={16} className="text-pink-500" />
           {t("branches") || "Filiallar"}

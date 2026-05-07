@@ -147,8 +147,8 @@ export default function UsersPage() {
       hideOnTablet: true,
       searchable: false,
       render: (val) => (
-        <Tag color={val === 'active' ? "success" : "default"} className="rounded-full px-3 border-none">
-          {val === 'active' ? t("active") : t("Deleted")}
+        <Tag color={val ? "success" : "default"} className="rounded-full px-3 border-none">
+          {val ? t("active") : t("Deleted")}
         </Tag>
       ),
     },
@@ -183,11 +183,11 @@ export default function UsersPage() {
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
           <Text strong className="text-foreground block truncate">{user.name}</Text>
-          <Text size="small" className="text-muted-foreground block truncate">{user.email}</Text>
+          <Text className="text-muted-foreground block truncate text-sm">{user.email}</Text>
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <Tag color={user.status === 'active' ? "success" : "default"} className="rounded-full px-2 border-none mr-0">
-            {user.status === 'active' ? t("active") : t("inactive")}
+          <Tag color={user.status ? "success" : "default"} className="rounded-full px-2 border-none mr-0">
+            {user.status ? t("active") : t("inactive")}
           </Tag>
           <Tag color={user.is_super ? "volcano" : "blue"} className="rounded-full px-2 border-none mr-0">
             {user.is_super ? "Super" : "Admin"}

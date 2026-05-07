@@ -163,7 +163,7 @@ export default function KiosksPage() {
             <div className="min-w-0">
               <Text strong className="block truncate">{row.name}</Text>
               {row.boxNumbers && (
-                <Text size="small" className="text-muted-foreground block truncate">
+                <Text className="text-muted-foreground block truncate text-sm">
                   Box: {row.boxNumbers}
                 </Text>
               )}

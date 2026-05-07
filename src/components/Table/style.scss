@@ -1,0 +1,34 @@
+.antd-custom-table {
+    .ant-table {
+        background: transparent !important;
+    }
+
+    .ant-table-thead > tr > th {
+        background: var(--sidebar-bg) !important;
+        color: var(--foreground) !important;
+        border-bottom: 1px solid var(--border) !important;
+        opacity: 0.8;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .ant-table-tbody > tr > td {
+        border-bottom: 1px solid var(--border) !important;
+        color: var(--foreground) !important;
+        background: transparent !important;
+        transition: all 0.3s;
+    }
+
+    .ant-table-tbody > tr:hover > td {
+        background: var(--accent) !important;
+        opacity: 0.9;
+    }
+
+    .ant-pagination-item-active {
+        border-color: var(--primary) !important;
+
+        a {
+            color: var(--primary) !important;
+        }
+    }
+}
