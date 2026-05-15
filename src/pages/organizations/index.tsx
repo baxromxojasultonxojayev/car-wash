@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Card, Button, Modal, Space, Typography, Switch } from "antd";
-import { Plus, Edit2, Trash2, RotateCcw } from "lucide-react";
+import { Plus, Edit2, Trash2, RotateCcw, Navigation } from "lucide-react";
 import DataTable, { Column } from "@/components/Table/DataTable";
 import DeleteConfirmModal from "../users/components/DeleteConfirmModal";
 import OrgForm from "./components/org-form";
@@ -12,6 +13,7 @@ const { Title, Text } = Typography;
 
 export default function OrganizationsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     organizations,
     loading,
@@ -91,6 +93,13 @@ export default function OrganizationsPage() {
       align: "right",
       render: (_, row) => (
         <Space size="small" onClick={(e) => e.stopPropagation()}>
+          <Button
+            type="text"
+            icon={<Navigation size={16} />}
+            onClick={() => navigate(`/branches?org_id=${row.id}`)}
+            className="text-emerald-500 hover:bg-emerald-500/10"
+            title={t("viewBranches") || "Filiallarni ko'rish"}
+          />
           <Button
             type="text"
             icon={<Edit2 size={16} />}

@@ -81,6 +81,13 @@ export const getMenuStructure = (t: TFunction): MenuItem[] => [
         roles: ["super_admin"],
       },
       {
+        id: "branches",
+        label: t("branches") || "Filiallar",
+        icon: Navigation,
+        path: "/branches",
+        roles: ["super_admin"],
+      },
+      {
         id: "my_branches",
         label: t("myBranches"),
         icon: Navigation,

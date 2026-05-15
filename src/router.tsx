@@ -10,6 +10,7 @@ import PlaceholderPage from './pages/placeholder'
 
 // Super Admin Pages
 import OrganizationsPage from './pages/organizations'
+import BranchesPage from './pages/branches'
 import AccountsPage from './pages/accounts'
 import QRCodesPage from './pages/qr-codes'
 import UsersPage from './pages/users'
@@ -56,6 +57,7 @@ export function AppRouter() {
       <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/organizations" element={<OrganizationsPage />} />
+          <Route path="/branches" element={<BranchesPage />} />
           <Route path="/qr-codes" element={<QRCodesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/devices" element={<PlaceholderPage title="Qurilmalar" />} />
